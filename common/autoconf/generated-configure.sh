@@ -1015,6 +1015,7 @@ infodir
 docdir
 oldincludedir
 includedir
+runstatedir
 localstatedir
 sharedstatedir
 sysconfdir
@@ -1070,6 +1071,7 @@ with_vendor_name
 with_vendor_url
 with_vendor_bug_url
 with_vendor_vm_bug_url
+with_company_name
 with_copyright_year
 with_boot_jdk
 with_boot_jdk_jvmargs
@@ -1257,6 +1259,7 @@ datadir='${datarootdir}'
 sysconfdir='${prefix}/etc'
 sharedstatedir='${prefix}/com'
 localstatedir='${prefix}/var'
+runstatedir='${localstatedir}/run'
 includedir='${prefix}/include'
 oldincludedir='/usr/include'
 docdir='${datarootdir}/doc/${PACKAGE_TARNAME}'
@@ -1509,6 +1512,15 @@ do
   | -silent | --silent | --silen | --sile | --sil)
     silent=yes ;;
 
+  -runstatedir | --runstatedir | --runstatedi | --runstated \
+  | --runstate | --runstat | --runsta | --runst | --runs \
+  | --run | --ru | --r)
+    ac_prev=runstatedir ;;
+  -runstatedir=* | --runstatedir=* | --runstatedi=* | --runstated=* \
+  | --runstate=* | --runstat=* | --runsta=* | --runst=* | --runs=* \
+  | --run=* | --ru=* | --r=*)
+    runstatedir=$ac_optarg ;;
+
   -sbindir | --sbindir | --sbindi | --sbind | --sbin | --sbi | --sb)
     ac_prev=sbindir ;;
   -sbindir=* | --sbindir=* | --sbindi=* | --sbind=* | --sbin=* \
@@ -1646,7 +1658,7 @@ fi
 for ac_var in	exec_prefix prefix bindir sbindir libexecdir datarootdir \
 		datadir sysconfdir sharedstatedir localstatedir includedir \
 		oldincludedir docdir infodir htmldir dvidir pdfdir psdir \
-		libdir localedir mandir
+		libdir localedir mandir runstatedir
 do
   eval ac_val=\$$ac_var
   # Remove trailing slashes.
@@ -1799,6 +1811,7 @@ Fine tuning of the installation directories:
   --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
   --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
   --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --runstatedir=DIR       modifiable per-process data [LOCALSTATEDIR/run]
   --libdir=DIR            object code libraries [EPREFIX/lib]
   --includedir=DIR        C header files [PREFIX/include]
   --oldincludedir=DIR     C header files for non-gcc [/usr/include]
@@ -1915,6 +1928,7 @@ Optional Packages:
   --with-vendor-vm-bug-url
                           Sets the bug URL which will be displayed when the VM
                           crashes [not specified]
+  --with-company-name     Set company name.
   --with-copyright-year   Set copyright year value for build [current year]
   --with-boot-jdk         path to Boot JDK (used to bootstrap build) [probed]
   --with-boot-jdk-jvmargs specify JVM arguments to be passed to all
@@ -14035,6 +14049,21 @@ $as_echo "$COMPILE_TYPE" >&6; }
     elif test "x$OPENJDK_TARGET_CPU_ARCH" = xx86; then
       OPENJDK_TARGET_CPU_JLI_CFLAGS="$OPENJDK_TARGET_CPU_JLI_CFLAGS -DLIBARCH32NAME='\"i386\"' -DLIBARCH64NAME='\"amd64\"'"
     fi
+  fi
+
+  # The company name, if any
+
+# Check whether --with-company-name was given.
+if test "${with_company_name+set}" = set; then :
+  withval=$with_company_name;
+fi
+
+  if test "x$with_company_name" = xyes; then
+    as_fn_error $? "--with-company-name must have a value" "$LINENO" 5
+  elif  ! [[ $with_company_name =~ ^[[:print:]]*$ ]] ; then
+    as_fn_error $? "--with-company-name contains non-printing characters: $with_company_name" "$LINENO" 5
+  elif test "x$with_company_name" != x; then
+    COMPANY_NAME="$with_company_name"
   fi
 
 
