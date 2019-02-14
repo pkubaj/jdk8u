@@ -67,6 +67,10 @@ public class Platform {
         return isOs("aix");
     }
 
+    public static boolean isBSD() {
+        return osName.toLowerCase().endsWith("bsd");
+    }
+
     public static boolean isLinux() {
         return isOs("linux");
     }

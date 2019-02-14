@@ -228,7 +228,7 @@ public class Transfer {
         // Windows and Linux can't handle the really large file sizes for a
         // truncate or a positional write required by the test for 4563125
         String osName = System.getProperty("os.name");
-        if (!(osName.startsWith("SunOS") || osName.contains("OS X")))
+        if (!(osName.startsWith("SunOS") || osName.endsWith("BSD") || osName.contains("OS X")))
             return;
         File source = File.createTempFile("blah", null);
         source.deleteOnExit();

@@ -168,6 +168,9 @@ ifeq ($(USE_PRECOMPILED_HEADER),0)
   CFLAGS += -DDONT_USE_PRECOMPILED_HEADER
 endif
 
+# Allow for where third party packages are located
+CFLAGS+= -DPACKAGE_PATH=\"$(PACKAGE_PATH)\"
+
 #------------------------------------------------------------------------
 # Compiler flags
 
@@ -201,12 +204,15 @@ else
 endif
 
 ifeq ($(USE_CLANG), true)
-  # Before Clang 3.1, we had to pass the stack alignment specification directly to llvm with the help of '-mllvm'
-  # Starting with version 3.1, Clang understands the '-mstack-alignment' (and rejects '-mllvm -stack-alignment')
-  ifneq "$(shell expr \( $(CC_VER_MAJOR) \> 3 \) \| \( \( $(CC_VER_MAJOR) = 3 \) \& \( $(CC_VER_MINOR) \>= 1 \) \))" "0"
-    STACK_ALIGNMENT_OPT = -mno-omit-leaf-frame-pointer -mstack-alignment=16
-  else
-    STACK_ALIGNMENT_OPT = -mno-omit-leaf-frame-pointer -mllvm -stack-alignment=16
+  STACK_ALIGNMENT_OPT = -mno-omit-leaf-frame-pointer
+  ifeq ($(OS_VENDOR), Darwin)
+    # Before Clang 3.1, we had to pass the stack alignment specification directly to llvm with the help of '-mllvm'
+    # Starting with version 3.1, Clang understands the '-mstack-alignment' (and rejects '-mllvm -stack-alignment')
+    ifneq "$(shell expr \( $(CC_VER_MAJOR) \> 3 \) \| \( \( $(CC_VER_MAJOR) = 3 \) \& \( $(CC_VER_MINOR) \>= 1 \) \))" "0"
+      STACK_ALIGNMENT_OPT += -mstack-alignment=16
+    else
+      STACK_ALIGNMENT_OPT += -mllvm -stack-alignment=16
+    endif
   endif
 endif
 
@@ -228,6 +234,10 @@ CFLAGS     += $(ARCHFLAG)
 AOUT_FLAGS += $(ARCHFLAG)
 LFLAGS     += $(ARCHFLAG)
 ASFLAGS    += $(ARCHFLAG)
+
+ifeq ($(DEBUG_BINARIES), true)
+  ASFLAGS    += $(ASFLAGS_DEBUG_SYMBOLS)
+endif
 
 ifdef E500V2
 CFLAGS += -DE500V2
@@ -258,6 +268,10 @@ ifeq ($(USE_CLANG), true)
 #  WARNINGS_ARE_ERRORS += -Wno-tautological-constant-out-of-range-compare
   WARNINGS_ARE_ERRORS += -Wno-delete-non-virtual-dtor -Wno-deprecated -Wno-format -Wno-dynamic-class-memaccess
   WARNINGS_ARE_ERRORS += -Wno-empty-body
+  ifneq "$(shell expr \( $(CC_VER_MAJOR) \>= 6 \))" "0"
+    WARNINGS_ARE_ERRORS += -Wno-undefined-bool-conversion -Wno-expansion-to-defined
+    WARNINGS_ARE_ERRORS += -Wno-undefined-var-template
+  endif
 endif
 
 WARNING_FLAGS = -Wpointer-arith -Wsign-compare -Wundef
@@ -265,7 +279,7 @@ WARNING_FLAGS = -Wpointer-arith -Wsign-compare -Wundef
 ifeq "$(shell expr \( $(CC_VER_MAJOR) \> 4 \) \| \( \( $(CC_VER_MAJOR) = 4 \) \& \( $(CC_VER_MINOR) \>= 3 \) \))" "0"
   # Since GCC 4.3, -Wconversion has changed its meanings to warn these implicit
   # conversions which might affect the values. Only enable it in earlier versions.
-  WARNING_FLAGS = -Wunused-function
+#  WARNING_FLAGS = -Wunused-function
   ifeq ($(USE_CLANG),)
     WARNING_FLAGS += -Wconversion
   endif
@@ -316,6 +330,9 @@ OPT_CFLAGS/NOOPT=-O0
 ifeq ($(USE_CLANG), true)
   ifeq ($(shell expr $(CC_VER_MAJOR) = 4 \& $(CC_VER_MINOR) = 2), 1)
     OPT_CFLAGS/loopTransform.o += $(OPT_CFLAGS/NOOPT)
+    OPT_CFLAGS/unsafe.o += -O1
+  endif
+  ifeq ($(shell expr $(CC_VER_MAJOR) = 6 \& $(CC_VER_MINOR) = 0), 1)
     OPT_CFLAGS/unsafe.o += -O1
   endif
 else
@@ -379,6 +396,8 @@ endif
 # Use $(MAPFLAG:FILENAME=real_file_name) to specify a map file.
 MAPFLAG = -Xlinker --version-script=FILENAME
 
+LDFLAGS_NO_EXEC_STACK="-Wl,-z,noexecstack"
+
 #
 # Shared Library
 #
@@ -421,53 +440,44 @@ ifeq ($(USE_CLANG), true)
   CFLAGS += -flimit-debug-info
 endif
 
+# Use the stabs format for debugging information (this is the default
+# on gcc-2.91). It's good enough, has all the information about line
+# numbers and local variables, and libjvm.so is only about 16M.
+# Change this back to "-g" if you want the most expressive format.
+# (warning: that could easily inflate libjvm.so to 150M!)
+# Note: The Itanium gcc compiler crashes when using -gstabs.
+# Don't use stabs on gcc>=4.8 because it is incompatible with
+# pre-compiled-headers
+ifeq ($(USE_CLANG), true)
+  # Clang doesn't understand -gstabs
+  STABS_CFLAGS += -g
+else
+  ifeq "$(shell expr \( $(CC_VER_MAJOR) \> 4 \) \| \( \( $(CC_VER_MAJOR) = 4 \) \& \( $(CC_VER_MINOR) \>= 8 \) \))" "1"
+    # GCC >= 4.8
+    STABS_CFLAGS += -g
+  else
+    STABS_CFLAGS/ia64  = -g
+    STABS_CFLAGS/arm   = -g
+    STABS_CFLAGS/ppc   = -g
+    STABS_CFLAGS/amd64 = -g
+    ifeq ($(STABS_CFLAGS/$(BUILDARCH)),)
+      STABS_CFLAGS += -gstabs
+    else
+      STABS_CFLAGS += $(STABS_CFLAGS/$(BUILDARCH))
+    endif
+  endif
+endif
+
 # DEBUG_BINARIES uses full -g debug information for all configs
 ifeq ($(DEBUG_BINARIES), true)
   CFLAGS += -g
 else
-  # Use the stabs format for debugging information (this is the default
-  # on gcc-2.91). It's good enough, has all the information about line
-  # numbers and local variables, and libjvm.so is only about 16M.
-  # Change this back to "-g" if you want the most expressive format.
-  # (warning: that could easily inflate libjvm.so to 150M!)
-  # Note: The Itanium gcc compiler crashes when using -gstabs.
-  DEBUG_CFLAGS/ia64  = -g
-  DEBUG_CFLAGS/amd64 = -g
-  DEBUG_CFLAGS/arm   = -g
-  DEBUG_CFLAGS/ppc   = -g
-  DEBUG_CFLAGS += $(DEBUG_CFLAGS/$(BUILDARCH))
-  ifeq ($(DEBUG_CFLAGS/$(BUILDARCH)),)
-  DEBUG_CFLAGS += -gstabs
-  endif
+  DEBUG_CFLAGS += ${STABS_CFLAGS}
   
   ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
-    FASTDEBUG_CFLAGS/ia64  = -g
-    FASTDEBUG_CFLAGS/amd64 = -g
-    FASTDEBUG_CFLAGS/arm   = -g
-    FASTDEBUG_CFLAGS/ppc   = -g
-    FASTDEBUG_CFLAGS += $(FASTDEBUG_CFLAGS/$(BUILDARCH))
-    ifeq ($(FASTDEBUG_CFLAGS/$(BUILDARCH)),)
-      ifeq ($(USE_CLANG), true)
-        # Clang doesn't understand -gstabs
-        FASTDEBUG_CFLAGS += -g
-      else
-        FASTDEBUG_CFLAGS += -gstabs
-      endif
-    endif
+    FASTDEBUG_CFLAGS += ${STABS_CFLAGS}
   
-    OPT_CFLAGS/ia64  = -g
-    OPT_CFLAGS/amd64 = -g
-    OPT_CFLAGS/arm   = -g
-    OPT_CFLAGS/ppc   = -g
-    OPT_CFLAGS += $(OPT_CFLAGS/$(BUILDARCH))
-    ifeq ($(OPT_CFLAGS/$(BUILDARCH)),)
-      ifeq ($(USE_CLANG), true)
-        # Clang doesn't understand -gstabs
-        OPT_CFLAGS += -g
-      else
-        OPT_CFLAGS += -gstabs
-      endif
-    endif
+    OPT_CFLAGS += ${STABS_CFLAGS}
   endif
 endif
 

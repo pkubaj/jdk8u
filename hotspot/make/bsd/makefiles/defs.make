@@ -29,7 +29,15 @@
 SLASH_JAVA ?= /java
 
 # Need PLATFORM (os-arch combo names) for jdk and hotspot, plus libarch name
-ARCH:=$(shell uname -m)
+# ARCH can be set explicitly in spec.gmk
+ifndef ARCH
+  ARCH := $(shell uname -m)
+  # Fold little endian PowerPC64 into big-endian (if ARCH is set in
+  # hotspot-spec.gmk, this will be done by the configure script).
+  ifeq ($(ARCH),ppc64le)
+    ARCH := ppc64
+  endif
+endif
 PATH_SEP = :
 ifeq ($(LP64), 1)
   ARCH_DATA_MODEL ?= 64
@@ -117,11 +125,19 @@ ifeq ($(ARCH), arm)
 endif
 
 # PPC
-ifeq ($(ARCH), ppc)
-  ARCH_DATA_MODEL  = 32
-  PLATFORM         = bsd-ppc
-  VM_PLATFORM      = bsd_ppc
-  HS_ARCH          = ppc
+# Notice: after 8046471 ARCH will be 'ppc' for top-level ppc64 builds but
+# 'ppc64' for HotSpot-only ppc64 builds. Need to detect both variants here!
+ifneq (,$(findstring $(ARCH), ppc ppc64))
+  ifeq ($(ARCH_DATA_MODEL), 64)
+    MAKE_ARGS        += LP64=1
+    PLATFORM         = bsd-ppc64
+    VM_PLATFORM      = bsd_ppc64
+  else
+    ARCH_DATA_MODEL  = 32
+    PLATFORM         = bsd-ppc
+    VM_PLATFORM      = bsd_ppc
+  endif
+  HS_ARCH = ppc
 endif
 
 # On 32 bit bsd we build server and client, on 64 bit just server.
@@ -321,10 +337,22 @@ endif
 ifeq ($(JVM_VARIANT_MINIMAL1),true)
   EXPORT_LIST += $(EXPORT_MINIMAL_DIR)/Xusage.txt
   EXPORT_LIST += $(EXPORT_MINIMAL_DIR)/libjvm.$(LIBRARY_SUFFIX)
+
+  ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
+    ifeq ($(ZIP_DEBUGINFO_FILES),1)
+        EXPORT_LIST += $(EXPORT_CLIENT_DIR)/libjvm.diz
+    else
+      ifeq ($(OS_VENDOR), Darwin)
+          EXPORT_LIST += $(EXPORT_CLIENT_DIR)/libjvm.$(LIBRARY_SUFFIX).dSYM
+      else
+          EXPORT_LIST += $(EXPORT_CLIENT_DIR)/libjvm.debuginfo
+      endif
+    endif
+  endif
 endif
 
 # Serviceability Binaries
-# No SA Support for PPC, IA64, ARM or zero
+# No SA Support for IA64, ARM or zero
 ADD_SA_BINARIES/x86   = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
                         $(EXPORT_LIB_DIR)/sa-jdi.jar
 
@@ -336,6 +364,23 @@ ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
         ADD_SA_BINARIES/x86 += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX).dSYM
     else
         ADD_SA_BINARIES/x86 += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.debuginfo
+    endif
+  endif
+endif
+
+ADD_SA_BINARIES/ppc   = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
+                        $(EXPORT_LIB_DIR)/sa-jdi.jar
+ADD_SA_BINARIES/universal = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
+                            $(EXPORT_LIB_DIR)/sa-jdi.jar
+
+ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
+  ifeq ($(ZIP_DEBUGINFO_FILES),1)
+      ADD_SA_BINARIES/ppc += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.diz
+  else
+    ifeq ($(OS_VENDOR), Darwin)
+        ADD_SA_BINARIES/ppc += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX).dSYM
+    else
+        ADD_SA_BINARIES/ppc += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.debuginfo
     endif
   endif
 endif
@@ -357,7 +402,6 @@ ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
   endif
 endif
 
-ADD_SA_BINARIES/ppc   =
 ADD_SA_BINARIES/ia64  =
 ADD_SA_BINARIES/arm   =
 ADD_SA_BINARIES/zero  =

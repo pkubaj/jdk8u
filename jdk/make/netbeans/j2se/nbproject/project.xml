@@ -34,6 +34,7 @@
 <!DOCTYPE project [
     <!ENTITY properties SYSTEM "../../common/properties.ent">
     <!ENTITY share-sources SYSTEM "../../common/share-sources.ent">
+    <!ENTITY bsd-sources SYSTEM "../../common/bsd-sources.ent">
     <!ENTITY macosx-sources SYSTEM "../../common/macosx-sources.ent">
     <!ENTITY unix-sources SYSTEM "../../common/unix-sources.ent">
     <!ENTITY windows-sources SYSTEM "../../common/windows-sources.ent">
@@ -41,6 +42,7 @@
     <!ENTITY build-folder SYSTEM "../../common/build-folder.ent">
     <!ENTITY standard-bindings SYSTEM "../../common/standard-bindings.ent">
     <!ENTITY share-view SYSTEM "../../common/share-view.ent">
+    <!ENTITY bsd-view SYSTEM "../../common/bsd-view.ent">
     <!ENTITY macosx-view SYSTEM "../../common/macosx-view.ent">
     <!ENTITY unix-view SYSTEM "../../common/unix-view.ent">
     <!ENTITY windows-view SYSTEM "../../common/windows-view.ent">
@@ -60,6 +62,7 @@
             </properties>
             <folders>
                 &share-sources;
+                &bsd-sources;
                 &macosx-sources;
                 &unix-sources;
                 &windows-sources;
@@ -86,6 +89,7 @@
             <view>
                 <items>
                     &share-view;
+                    &bsd-view;
                     &macosx-view;
                     &unix-view;
                     &windows-view;

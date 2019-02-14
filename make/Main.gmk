@@ -58,7 +58,11 @@ $(eval $(call ResetAllTimers))
 
 # Setup number of jobs to use. -jN is unfortunately not available for us to parse from the command line,
 # hence this workaround.
+ifdef JOBS
+ifneq ($(JOBS),0)
 MAKE_ARGS:=$(MAKE_ARGS) -j$(JOBS)
+endif
+endif
 
 ### Main targets
 

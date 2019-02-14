@@ -34,6 +34,7 @@
 <java-data xmlns="http://www.netbeans.org/ns/freeform-project-java/4">
     <compilation-unit>
         <package-root>${root}/src/share/classes</package-root>
+        <package-root>${root}/src/bsd/classes</package-root>
         <package-root>${root}/src/macosx/classes</package-root>
         <package-root>${root}/src/solaris/classes</package-root>
         <package-root>${root}/src/windows/classes</package-root>

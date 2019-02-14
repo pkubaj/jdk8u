@@ -37,6 +37,7 @@
 VALID_TOOLCHAINS_all="gcc clang solstudio xlc microsoft"
 
 # These toolchains are valid on different platforms
+VALID_TOOLCHAINS_bsd="clang gcc"
 VALID_TOOLCHAINS_linux="gcc clang"
 VALID_TOOLCHAINS_solaris="solstudio"
 VALID_TOOLCHAINS_macosx="gcc clang"
@@ -713,7 +714,7 @@ AC_DEFUN_ONCE([TOOLCHAIN_DETECT_TOOLCHAIN_EXTRA],
 
   # objcopy is used for moving debug symbols to separate files when
   # full debug symbols are enabled.
-  if test "x$OPENJDK_TARGET_OS" = xsolaris || test "x$OPENJDK_TARGET_OS" = xlinux; then
+  if test "x$OPENJDK_TARGET_OS" = xsolaris || test "x$OPENJDK_TARGET_OS" = xlinux || test "x$OPENJDK_TARGET_OS" = xbsd ; then
     BASIC_CHECK_TOOLS(OBJCOPY, [gobjcopy objcopy])
     # Only call fixup if objcopy was found.
     if test -n "$OBJCOPY"; then
@@ -801,9 +802,52 @@ AC_DEFUN_ONCE([TOOLCHAIN_SETUP_LEGACY],
 AC_DEFUN_ONCE([TOOLCHAIN_MISC_CHECKS],
  [
   # The package path is used only on macosx?
-  # FIXME: clean this up, and/or move it elsewhere.
-  PACKAGE_PATH=/opt/local
+  AC_ARG_WITH(package-path, [AS_HELP_STRING([--with-package-path],
+      [package path to be used for location of third party packages])])
+  PACKAGE_PATH="$with_package_path"
+  if test "x$PACKAGE_PATH" = x; then
+    if test "`uname -s`" = "Darwin"; then
+      PACKAGE_PATH=/opt/local
+    fi
+
+    if test "`uname -s`" = "FreeBSD"; then
+      PACKAGE_PATH=/usr/local
+    fi
+
+    if test "`uname -s`" = "NetBSD"; then
+      PACKAGE_PATH=/usr/pkg
+    fi
+
+    if test "`uname -s`" = "OpenBSD"; then
+      PACKAGE_PATH=/usr/local
+    fi
+  fi
+
   AC_SUBST(PACKAGE_PATH)
+
+  # On OpenBSD check to see if ld requires -z wxneeded
+  if test "`uname -s`" = "OpenBSD"; then
+    AC_MSG_CHECKING([if ld requires -z wxneeded])
+    PUSHED_LDFLAGS="$LDFLAGS"
+    LDFLAGS="$LDFLAGS -Wl,-z,wxneeded"
+    AC_LINK_IFELSE([AC_LANG_SOURCE([[int main() { }]])],
+        [
+          if $READELF -l conftest$ac_exeext | $GREP OPENBSD_WXNEED > /dev/null; then
+            AC_MSG_RESULT([yes])
+            LDFLAGS_JDK="${LDFLAGS_JDK} -Wl,-z,wxneeded"
+          else
+            AC_MSG_RESULT([yes])
+          fi
+        ],
+        [
+          AC_MSG_RESULT([no])
+        ],
+        [
+          AC_MSG_RESULT([no])
+        ]
+    )
+    LDFLAGS="$PUSHED_LDFLAGS"
+  fi
 
   # Check for extra potential brokenness.
   if test  "x$TOOLCHAIN_TYPE" = xmicrosoft; then

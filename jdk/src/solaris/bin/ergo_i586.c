@@ -106,7 +106,7 @@ ServerClassMachineImpl(void) {
 
 #endif /* __solaris__ */
 
-#ifdef __linux__
+#if defined(__linux__) || defined(_ALLBSD_SOURCE)
 
 /*
  * A utility method for asking the CPU about itself.
@@ -197,7 +197,7 @@ ServerClassMachineImpl(void) {
            (result == JNI_TRUE ? "true" : "false"));
   return result;
 }
-#endif /* __linux__ */
+#endif /* __linux__ || _ALLBSD_SOURCE */
 
 /*
  * Routines shared by solaris-i586 and linux-i586.

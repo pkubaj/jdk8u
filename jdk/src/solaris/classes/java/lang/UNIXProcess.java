@@ -82,6 +82,8 @@ final class UNIXProcess extends Process {
 
         LINUX(LaunchMechanism.VFORK, LaunchMechanism.FORK),
 
+        MACOS(LaunchMechanism.POSIX_SPAWN, LaunchMechanism.FORK),
+
         BSD(LaunchMechanism.POSIX_SPAWN, LaunchMechanism.FORK),
 
         SOLARIS(LaunchMechanism.POSIX_SPAWN, LaunchMechanism.FORK),
@@ -105,9 +107,10 @@ final class UNIXProcess extends Process {
                     // fall through...
                 case LINUX:
                 case AIX:
+                case BSD:
                     return javahome + "/lib/" + osArch + "/jspawnhelper";
 
-                case BSD:
+                case MACOS:
                     return javahome + "/lib/jspawnhelper";
 
                 default:
@@ -157,7 +160,8 @@ final class UNIXProcess extends Process {
             );
 
             if (osName.equals("Linux")) { return LINUX; }
-            if (osName.contains("OS X")) { return BSD; }
+            if (osName.contains("OS X")) { return MACOS; }
+            if (osName.endsWith("BSD")) { return BSD; }
             if (osName.equals("SunOS")) { return SOLARIS; }
             if (osName.equals("AIX")) { return AIX; }
 
@@ -272,6 +276,7 @@ final class UNIXProcess extends Process {
     void initStreams(int[] fds) throws IOException {
         switch (platform) {
             case LINUX:
+            case MACOS:
             case BSD:
                 stdin = (fds[0] == -1) ?
                         ProcessBuilder.NullOutputStream.INSTANCE :
@@ -430,6 +435,7 @@ final class UNIXProcess extends Process {
     private void destroy(boolean force) {
         switch (platform) {
             case LINUX:
+            case MACOS:
             case BSD:
             case AIX:
                 // There is a risk that pid will be recycled, causing us to

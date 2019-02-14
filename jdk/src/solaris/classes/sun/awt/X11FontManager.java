@@ -234,7 +234,7 @@ public final class X11FontManager extends FcFontManager {
         if (fontID != null) {
             fileName = (String)fontNameMap.get(fontID);
             /* On Linux check for the Lucida Oblique fonts */
-            if (fileName == null && FontUtilities.isLinux && !isOpenJDK()) {
+            if (fileName == null && (FontUtilities.isLinux || FontUtilities.isBSD) && !isOpenJDK()) {
                 if (oblmap == null) {
                     initObliqueLucidaFontMap();
                 }
@@ -733,7 +733,7 @@ public final class X11FontManager extends FcFontManager {
         if (fontConfigDirs == null) {
             return;
         }
-        if (FontUtilities.isLinux) {
+        if (FontUtilities.isLinux || FontUtilities.isBSD) {
             fontConfigDirs.add(jreLibDirName+File.separator+"oblique-fonts");
         }
         fontdirs = (String[])fontConfigDirs.toArray(new String[0]);
@@ -761,7 +761,7 @@ public final class X11FontManager extends FcFontManager {
          */
         FontConfiguration mFontConfig = new MFontConfiguration(this);
         if (FontUtilities.isOpenSolaris ||
-            (FontUtilities.isLinux &&
+            ((FontUtilities.isLinux || FontUtilities.isBSD) &&
              (!mFontConfig.foundOsSpecificFile() ||
               !mFontConfig.fontFilesArePresent()) ||
              (FontUtilities.isSolaris && !mFontConfig.fontFilesArePresent()))) {

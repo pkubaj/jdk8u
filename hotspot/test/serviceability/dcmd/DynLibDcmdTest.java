@@ -47,6 +47,8 @@ public class DynLibDcmdTest {
             osDependentBaseString = "lib%s.dylib";
         } else if (Platform.isLinux()) {
             osDependentBaseString = "lib%s.so";
+        } else if (Platform.isBSD()) {
+            osDependentBaseString = "lib%s.so";
         }
 
         if (osDependentBaseString == null) {

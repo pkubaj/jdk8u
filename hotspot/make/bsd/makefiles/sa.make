@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2003, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2003, 2014, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -19,7 +19,7 @@
 # Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
 # or visit www.oracle.com if you need additional information or have any
 # questions.
-#  
+#
 #
 
 # This makefile (sa.make) is included from the sa.make in the
@@ -30,34 +30,21 @@
 
 include $(GAMMADIR)/make/bsd/makefiles/rules.make
 
+include $(GAMMADIR)/make/defs.make
+include $(GAMMADIR)/make/altsrc.make
+
 AGENT_DIR = $(GAMMADIR)/agent
 
 include $(GAMMADIR)/make/sa.files
 
 -include $(HS_ALT_MAKE)/bsd/makefiles/sa.make
 
+
 TOPDIR    = $(shell echo `pwd`)
 GENERATED = $(TOPDIR)/../generated
 
-# SA-JDI depends on the standard JDI classes.
-# Default SA_CLASSPATH location:
-DEF_SA_CLASSPATH=$(BOOT_JAVA_HOME)/lib/tools.jar
-ifeq ($(ALT_SA_CLASSPATH),)
-  # no alternate specified; see if default exists
-  SA_CLASSPATH=$(shell test -f $(DEF_SA_CLASSPATH) && echo $(DEF_SA_CLASSPATH))
-  ifeq ($(SA_CLASSPATH),)
-    # the default doesn't exist
-    ifeq ($(OS_VENDOR), Darwin)
-      # A JDK from Apple doesn't have tools.jar; the JDI classes are
-      # are in the regular classes.jar file.
-      APPLE_JAR=$(BOOT_JAVA_HOME)/bundle/Classes/classes.jar
-      SA_CLASSPATH=$(shell test -f $(APPLE_JAR) && echo $(APPLE_JAR))
-    endif
-  endif
-else
-  _JUNK_ := $(shell echo >&2 "INFO: ALT_SA_CLASSPATH=$(ALT_SA_CLASSPATH)")
-  SA_CLASSPATH=$(shell test -f $(ALT_SA_CLASSPATH) && echo $(ALT_SA_CLASSPATH))
-endif
+# tools.jar is needed by the JDI - SA binding
+SA_CLASSPATH = $(BOOT_JAVA_HOME)/lib/tools.jar
 
 # TODO: if it's a modules image, check if SA module is installed.
 MODULELIB_PATH= $(BOOT_JAVA_HOME)/lib/modules
@@ -71,24 +58,22 @@ SA_BUILD_VERSION_PROP = "sun.jvm.hotspot.runtime.VM.saBuildVersion=$(SA_BUILD_VE
 SA_PROPERTIES = $(SA_CLASSDIR)/sa.properties
 
 # if $(AGENT_DIR) does not exist, we don't build SA
-# also, we don't build SA on Itanium, PowerPC, ARM or zero.
+# also, we don't build SA on Itanium or zero.
 
-all: 
+all:
 	if [ -d $(AGENT_DIR) -a "$(SRCARCH)" != "ia64" \
-             -a "$(SRCARCH)" != "arm" \
-             -a "$(SRCARCH)" != "ppc" \
              -a "$(SRCARCH)" != "zero" ] ; then \
 	   $(MAKE) -f sa.make $(GENERATED)/sa-jdi.jar; \
 	fi
 
-$(GENERATED)/sa-jdi.jar: $(AGENT_FILES)
-	$(QUIETLY) echo "Making $@"
+$(GENERATED)/sa-jdi.jar:: $(AGENT_FILES)
+	$(QUIETLY) echo $(LOG_INFO) "Making $@"
 	$(QUIETLY) if [ "$(BOOT_JAVA_HOME)" = "" ]; then \
 	  echo "ALT_BOOTDIR, BOOTDIR or JAVA_HOME needs to be defined to build SA"; \
 	  exit 1; \
 	fi
-	$(QUIETLY) if [ ! -f "$(SA_CLASSPATH)" -a ! -d $(MODULELIB_PATH) ] ; then \
-	  echo "Cannot find JDI classes. Use 1.6.0 or later version of JDK."; \
+	$(QUIETLY) if [ ! -f $(SA_CLASSPATH) -a ! -d $(MODULELIB_PATH) ] ; then \
+	  echo "Missing $(SA_CLASSPATH) file. Use 1.6.0 or later version of JDK";\
 	  echo ""; \
 	  exit 1; \
 	fi
@@ -114,19 +99,22 @@ $(GENERATED)/sa-jdi.jar: $(AGENT_FILES)
 	$(QUIETLY) $(REMOTE) $(COMPILE.RMIC)  -classpath $(SA_CLASSDIR) -d $(SA_CLASSDIR) sun.jvm.hotspot.debugger.remote.RemoteDebuggerServer
 	$(QUIETLY) echo "$(SA_BUILD_VERSION_PROP)" > $(SA_PROPERTIES)
 	$(QUIETLY) rm -f $(SA_CLASSDIR)/sun/jvm/hotspot/utilities/soql/sa.js
-	$(QUIETLY) cp $(AGENT_SRC_DIR)/sun/jvm/hotspot/utilities/soql/sa.js $(SA_CLASSDIR)/sun/jvm/hotspot/utilities/soql
+	$(QUIETLY) $(CP) $(AGENT_SRC_DIR)/sun/jvm/hotspot/utilities/soql/sa.js $(SA_CLASSDIR)/sun/jvm/hotspot/utilities/soql
 	$(QUIETLY) mkdir -p $(SA_CLASSDIR)/sun/jvm/hotspot/ui/resources
 	$(QUIETLY) rm -f $(SA_CLASSDIR)/sun/jvm/hotspot/ui/resources/*
-	$(QUIETLY) cp $(AGENT_SRC_DIR)/sun/jvm/hotspot/ui/resources/*.png $(SA_CLASSDIR)/sun/jvm/hotspot/ui/resources/
-	$(QUIETLY) cp -r $(AGENT_SRC_DIR)/images/* $(SA_CLASSDIR)/
+	$(QUIETLY) $(CP) $(AGENT_SRC_DIR)/sun/jvm/hotspot/ui/resources/*.png $(SA_CLASSDIR)/sun/jvm/hotspot/ui/resources/
+	$(QUIETLY) $(CP) -r $(AGENT_SRC_DIR)/images/* $(SA_CLASSDIR)/
 	$(QUIETLY) $(REMOTE) $(RUN.JAR) cf $@ -C $(SA_CLASSDIR)/ .
 	$(QUIETLY) $(REMOTE) $(RUN.JAR) uf $@ -C $(AGENT_SRC_DIR) META-INF/services/com.sun.jdi.connect.Connector
 	$(QUIETLY) $(REMOTE) $(RUN.JAVAH) -classpath $(SA_CLASSDIR) -d $(GENERATED) -jni sun.jvm.hotspot.debugger.x86.X86ThreadContext
 	$(QUIETLY) $(REMOTE) $(RUN.JAVAH) -classpath $(SA_CLASSDIR) -d $(GENERATED) -jni sun.jvm.hotspot.debugger.amd64.AMD64ThreadContext
 	$(QUIETLY) $(REMOTE) $(RUN.JAVAH) -classpath $(SA_CLASSDIR) -d $(GENERATED) -jni sun.jvm.hotspot.debugger.sparc.SPARCThreadContext
+	$(QUIETLY) $(REMOTE) $(RUN.JAVAH) -classpath $(SA_CLASSDIR) -d $(GENERATED) -jni sun.jvm.hotspot.debugger.ppc64.PPC64ThreadContext
 	$(QUIETLY) $(REMOTE) $(RUN.JAVAH) -classpath $(SA_CLASSDIR) -d $(GENERATED) -jni sun.jvm.hotspot.asm.Disassembler
 
 clean:
 	rm -rf $(SA_CLASSDIR)
 	rm -rf $(GENERATED)/sa-jdi.jar
 	rm -rf $(AGENT_FILES_LIST)
+
+-include $(HS_ALT_MAKE)/bsd/makefiles/sa-rules.make

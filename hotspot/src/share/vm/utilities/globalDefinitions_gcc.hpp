@@ -30,6 +30,11 @@
 // This file holds compiler-dependent includes,
 // globally used constants & types, class (forward)
 // declarations and a few frequently used utility functions.
+#if defined(LINUX) || defined(_ALLBSD_SOURCE)
+#ifndef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#endif // __STDC_LIMIT_MACROS
+#endif
 
 #include <ctype.h>
 #include <string.h>
@@ -69,9 +74,6 @@
 # endif
 
 #if defined(LINUX) || defined(_ALLBSD_SOURCE)
-#ifndef __STDC_LIMIT_MACROS
-#define __STDC_LIMIT_MACROS
-#endif // __STDC_LIMIT_MACROS
 #include <inttypes.h>
 #include <signal.h>
 #ifndef __OpenBSD__
@@ -242,7 +244,7 @@ inline int g_isnan(double f) { return isnan(f); }
 #endif
 
 // GCC 4.3 does not allow 0.0/0.0 to produce a NAN value
-#if (__GNUC__ == 4) && (__GNUC_MINOR__ > 2)
+#if defined(__clang__) || ((__GNUC__ == 4) && (__GNUC_MINOR__ > 2))
 #define CAN_USE_NAN_DEFINE 1
 #endif
 

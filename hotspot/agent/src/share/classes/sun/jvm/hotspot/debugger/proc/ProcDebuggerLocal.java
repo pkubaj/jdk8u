@@ -32,7 +32,9 @@ import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.debugger.cdbg.*;
 import sun.jvm.hotspot.debugger.proc.amd64.*;
 import sun.jvm.hotspot.debugger.proc.sparc.*;
+import sun.jvm.hotspot.debugger.proc.ppc64.*;
 import sun.jvm.hotspot.debugger.proc.x86.*;
+import sun.jvm.hotspot.debugger.ppc64.*;
 import sun.jvm.hotspot.debugger.amd64.*;
 import sun.jvm.hotspot.debugger.sparc.*;
 import sun.jvm.hotspot.debugger.x86.*;
@@ -86,6 +88,10 @@ public class ProcDebuggerLocal extends DebuggerBase implements ProcDebugger {
             threadFactory = new ProcAMD64ThreadFactory(this);
             pcRegIndex = AMD64ThreadContext.RIP;
             fpRegIndex = AMD64ThreadContext.RBP;
+        } else if (cpu.equals("ppc64")) {
+            threadFactory = new ProcPPC64ThreadFactory(this);
+            pcRegIndex = PPC64ThreadContext.PC;
+            fpRegIndex = PPC64ThreadContext.SP;
         } else {
           try {
             Class tfc = Class.forName("sun.jvm.hotspot.debugger.proc." +

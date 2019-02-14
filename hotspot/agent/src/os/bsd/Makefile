@@ -85,6 +85,9 @@ ifndef LDNOMAP
   LFLAGS_LIBSA = -Xlinker --version-script=mapfile
 endif
 
+LDFLAGS_NO_EXEC_STACK="-Wl,-z,noexecstack"
+LFLAGS_LIBSA += $(LDFLAGS_NO_EXEC_STACK)
+
 $(LIBSA): $(OBJSPLUS) mapfile 
 	if [ ! -d $(ARCH) ] ; then mkdir $(ARCH) ; fi
 	$(GCC) -shared $(LFLAGS_LIBSA) -o $(LIBSA) $(FOUNDATIONFLAGS) $(OBJSPLUS) $(LIBS) $(SALIBS)

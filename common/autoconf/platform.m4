@@ -30,7 +30,7 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_CPU],
 [
   # First argument is the cpu name from the trip/quad
   case "$1" in
-    x86_64)
+    amd64|x86_64)
       VAR_CPU=x86_64
       VAR_CPU_ARCH=x86
       VAR_CPU_BITS=64
@@ -147,6 +147,22 @@ AC_DEFUN([PLATFORM_EXTRACT_VARS_FROM_OS],
       AC_MSG_ERROR([unsupported operating system $1])
       ;;
   esac
+  # The BSD's have slight differences so determine which one we are building on.
+  # For the rest set VAR_OS_VENDOR to VAR_OS
+  case "$1" in
+    *openbsd*)
+      VAR_OS_VENDOR=openbsd
+      ;;
+    *netbsd*)
+      VAR_OS_VENDOR=netbsd
+      ;;
+    *freebsd*)
+      VAR_OS_VENDOR=freebsd
+      ;;
+    *)
+      VAR_OS_VENDOR="$VAR_OS"
+      ;;
+  esac
 ])
 
 # Expects $host_os $host_cpu $build_os and $build_cpu
@@ -193,6 +209,7 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   PLATFORM_EXTRACT_VARS_FROM_CPU($host_cpu)
   # ... and setup our own variables. (Do this explicitely to facilitate searching)
   OPENJDK_TARGET_OS="$VAR_OS"
+  OPENJDK_TARGET_OS_VENDOR="$VAR_OS_VENDOR"
   OPENJDK_TARGET_OS_API="$VAR_OS_API"
   OPENJDK_TARGET_OS_ENV="$VAR_OS_ENV"
   OPENJDK_TARGET_CPU="$VAR_CPU"
@@ -200,6 +217,7 @@ AC_DEFUN([PLATFORM_EXTRACT_TARGET_AND_BUILD],
   OPENJDK_TARGET_CPU_BITS="$VAR_CPU_BITS"
   OPENJDK_TARGET_CPU_ENDIAN="$VAR_CPU_ENDIAN"
   AC_SUBST(OPENJDK_TARGET_OS)
+  AC_SUBST(OPENJDK_TARGET_OS_VENDOR)
   AC_SUBST(OPENJDK_TARGET_OS_API)
   AC_SUBST(OPENJDK_TARGET_OS_ENV)
   AC_SUBST(OPENJDK_TARGET_CPU)
@@ -310,8 +328,8 @@ AC_DEFUN([PLATFORM_SETUP_LEGACY_VARS],
 
   # Setup OPENJDK_TARGET_CPU_OSARCH, which is used to set the os.arch Java system property
   OPENJDK_TARGET_CPU_OSARCH="$OPENJDK_TARGET_CPU"
-  if test "x$OPENJDK_TARGET_OS" = xlinux && test "x$OPENJDK_TARGET_CPU" = xx86; then
-    # On linux only, we replace x86 with i386.
+  if test "x$OPENJDK_TARGET_OS" = xbsd -o "x$OPENJDK_TARGET_OS" = xlinux && test "x$OPENJDK_TARGET_CPU" = xx86; then
+    # On Linux and BSD, we replace x86 with i386.
     OPENJDK_TARGET_CPU_OSARCH="i386"
   elif test "x$OPENJDK_TARGET_OS" != xmacosx && test "x$OPENJDK_TARGET_CPU" = xx86_64; then
     # On all platforms except macosx, we replace x86_64 with amd64.

@@ -159,7 +159,7 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JVM_VARIANTS],
     INCLUDE_SA=false
   fi
   if test "x$VAR_CPU" = xppc64 -o "x$VAR_CPU" = xppc64le ; then
-    INCLUDE_SA=false
+    INCLUDE_SA=true
   fi
   if test "x$OPENJDK_TARGET_CPU" = xaarch64; then
     INCLUDE_SA=false
@@ -407,6 +407,20 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JDK_OPTIONS],
     UNLIMITED_CRYPTO=false
   fi
   AC_SUBST(UNLIMITED_CRYPTO)
+
+  ###############################################################################
+  #
+  # Enable or disable static linking of libjli on bsd only
+  #
+  AC_ARG_ENABLE(static-libjli, [AS_HELP_STRING([--enable-static-libjli],
+      [Enable staticly linking libjli on bsd @<:@disabled@:>@])],,
+      [enable_static_libjli=no])
+  if test "x$OPENJDK_TARGET_OS" = "xbsd" && test "x$enable_static_libjli" = "xyes"; then
+    BSD_STATIC_LIBJLI=bsd
+  else
+    BSD_STATIC_LIBJLI=
+  fi
+  AC_SUBST(BSD_STATIC_LIBJLI)
 
   ###############################################################################
   #

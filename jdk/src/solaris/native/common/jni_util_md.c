@@ -28,6 +28,7 @@
 #include "jni.h"
 #include "jni_util.h"
 #include "dlfcn.h"
+#include <string.h>
 
 jstring nativeNewStringPlatform(JNIEnv *env, const char *str) {
     return NULL;

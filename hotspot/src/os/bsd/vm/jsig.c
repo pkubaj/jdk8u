@@ -165,9 +165,8 @@ sa_handler_t signal(int sig, sa_handler_t disp) {
 }
 
 sa_handler_t sigset(int sig, sa_handler_t disp) {
-  printf("sigset() is not supported by BSD");
-  exit(0);
- }
+  return set_signal(sig, disp, true);
+}
 
 static int call_os_sigaction(int sig, const struct sigaction  *act,
                              struct sigaction *oact) {

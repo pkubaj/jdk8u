@@ -38,7 +38,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#ifndef __FreeBSD__
 #include <sys/syslimits.h>
+#endif
 #include <sys/un.h>
 #include <fcntl.h>
 

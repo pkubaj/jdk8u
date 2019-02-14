@@ -121,7 +121,7 @@ static INLINE UINT8 MAP_ClipAndConvertToUByte(MAP_Sample sample) {
 }
 
 /* conversion from/to 16 bit signed little endian to native endian samples */
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 #define MAP_LE_SHORT2SAMPLE(sh) ((MAP_Sample) (sh))
 #define MAP_SAMPLE2LE_SHORT(sample) (sample)
 #define MAP_SAMPLE2LE_SHORT_CLIP(sample) MAP_ClipAndConvertToShort(sample)
@@ -132,7 +132,7 @@ static INLINE UINT8 MAP_ClipAndConvertToUByte(MAP_Sample sample) {
 #endif
 
 /* conversion from/to 16 bit signed big endian to native endian samples */
-#ifndef _LITTLE_ENDIAN
+#ifndef VM_LITTLE_ENDIAN
 #define MAP_BE_SHORT2SAMPLE(sh) ((MAP_Sample) (sh))
 #define MAP_SAMPLE2BE_SHORT(sample) (sample)
 #define MAP_SAMPLE2BE_SHORT_CLIP(sample) MAP_ClipAndConvertToShort(sample)
@@ -151,7 +151,7 @@ static INLINE UINT8 MAP_ClipAndConvertToUByte(MAP_Sample sample) {
 #define MAP_SAMPLE2INT8_CLIP(sample) MAP_ClipAndConvertToByte(sample)
 
 /* macros for endian conversion */
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 #define MAP_NATIVE2LE16(a) (a)
 #define MAP_NATIVE2BE16(a) MAP_SWAP16_impl(a)
 #define MAP_NATIVE2LE32(a) (a)

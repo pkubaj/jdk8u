@@ -63,9 +63,6 @@
  *    MLIB_EDGE_SRC_PADDED
  */
 
-#ifdef MACOSX
-#include <machine/endian.h>
-#endif
 #include <mlib_image.h>
 #include <mlib_ImageZoom.h>
 
@@ -102,7 +99,7 @@ typedef union {
 
 /***************************************************************/
 
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 
 static const mlib_u32 mlib_bit_mask4[16] = {
   0x00000000u, 0xFF000000u, 0x00FF0000u, 0xFFFF0000u,
@@ -111,7 +108,7 @@ static const mlib_u32 mlib_bit_mask4[16] = {
   0x0000FFFFu, 0xFF00FFFFu, 0x00FFFFFFu, 0xFFFFFFFFu
 };
 
-#else /* _LITTLE_ENDIAN */
+#else /* VM_LITTLE_ENDIAN */
 
 static const mlib_u32 mlib_bit_mask4[16] = {
   0x00000000u, 0x000000FFu, 0x0000FF00u, 0x0000FFFFu,
@@ -120,7 +117,7 @@ static const mlib_u32 mlib_bit_mask4[16] = {
   0xFFFF0000u, 0xFFFF00FFu, 0xFFFFFF00u, 0xFFFFFFFFu
 };
 
-#endif /* _LITTLE_ENDIAN */
+#endif /* VM_LITTLE_ENDIAN */
 
 /***************************************************************/
 
@@ -344,11 +341,11 @@ mlib_status mlib_ImageZoom_BIT_1_Nearest(mlib_work_image *param,
 #ifdef _NO_LONGLONG
 
 typedef struct {
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
   mlib_u32 uint1, uint0;
-#else /* _LITTLE_ENDIAN */
+#else /* VM_LITTLE_ENDIAN */
   mlib_u32 uint0, uint1;
-#endif /* _LITTLE_ENDIAN */
+#endif /* VM_LITTLE_ENDIAN */
 } two_uint;
 
 /***************************************************************/
@@ -511,11 +508,11 @@ mlib_status mlib_ImageZoom_BitToGray_1_Nearest(mlib_work_image *param,
         DTYPE mask;
         MASK(mask);
         off *= 8;
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
         LSHIFT(dd_old, da[0], 64 - off);
-#else /* _LITTLE_ENDIAN */
+#else /* VM_LITTLE_ENDIAN */
         RSHIFT(dd_old, da[0], 64 - off);
-#endif /* _LITTLE_ENDIAN */
+#endif /* VM_LITTLE_ENDIAN */
 
 #ifdef __SUNPRO_C
 #pragma pipeloop(0)
@@ -540,30 +537,30 @@ mlib_status mlib_ImageZoom_BitToGray_1_Nearest(mlib_work_image *param,
 
           res = (res & 0xff) | (res >> 8);
           dd = gray_mask[res];
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 /* *da++ = (dd_old >> (64 - off)) | (dd << off);*/
           RSHIFT(dd_old, dd_old, 64 - off);
           LSHIFT(dtmp, dd, off);
-#else /* _LITTLE_ENDIAN */
+#else /* VM_LITTLE_ENDIAN */
 /* *da++ = (dd_old << (64 - off)) | (dd >> off);*/
           LSHIFT(dd_old, dd_old, 64 - off);
           RSHIFT(dtmp, dd, off);
-#endif /* _LITTLE_ENDIAN */
+#endif /* VM_LITTLE_ENDIAN */
           LOGIC(*da++, dd_old, dtmp, |);
           dd_old = dd;
         }
 
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 /* da[0] = (dd_old >> (64 - off)) | (da[0] & ((mlib_u64)((mlib_s64) -1) << off));*/
         LSHIFT(dtmp, mask, off);
         LOGIC(dtmp, da[0], dtmp, &);
         RSHIFT(dtmp1, dd_old, 64 - off);
-#else /* _LITTLE_ENDIAN */
+#else /* VM_LITTLE_ENDIAN */
 /* da[0] = (dd_old << (64 - off)) | (da[0] & ((mlib_u64)((mlib_s64) -1) >> off));*/
         RSHIFT(dtmp, mask, off);
         LOGIC(dtmp, da[0], dtmp, &);
         LSHIFT(dtmp1, dd_old, 64 - off);
-#endif /* _LITTLE_ENDIAN */
+#endif /* VM_LITTLE_ENDIAN */
         LOGIC(da[0], dtmp, dtmp1, |);
       }
       else {                                               /* aligned */

@@ -182,7 +182,7 @@ JNIEXPORT jlong JNICALL Java_sun_java2d_cmm_lcms_LCMS_createNativeTransform
         return 0L;
     }
 
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
     /* Reversing data packed into int for LE archs */
     if (isInIntPacked) {
         inFormatter ^= DOSWAP_SH(1);

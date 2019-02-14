@@ -158,8 +158,10 @@ WB_ENTRY(void, WB_AddToSystemClassLoaderSearch(JNIEnv* env, jobject o, jstring s
 }
 WB_END
 
-#ifdef LINUX
+#if defined(LINUX) || defined(_ALLBSD_SOURCE)
 #include "utilities/elfFile.hpp"
+#endif
+#if defined(LINUX)
 #include "osContainer_linux.hpp"
 #endif
 
@@ -1017,7 +1019,7 @@ void WhiteBox::register_methods(JNIEnv* env, jclass wbclass, JavaThread* thread,
 // Checks that the library libfile has the noexecstack bit set.
 WB_ENTRY(jboolean, WB_CheckLibSpecifiesNoexecstack(JNIEnv* env, jobject o, jstring libfile))
   jboolean ret = false;
-#ifdef LINUX
+#if defined(LINUX) || defined(_ALLBSD_SOURCE)
   // Can't be in VM when we call JNI.
   ThreadToNativeFromVM ttnfv(thread);
   const char* lf = env->GetStringUTFChars(libfile, NULL);

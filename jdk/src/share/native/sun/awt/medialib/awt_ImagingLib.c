@@ -1198,7 +1198,7 @@ typedef struct {
 
 #define NLUT 8
 
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 #define INDEXES    { 3, 2, 1, 0, 7, 6, 5, 4 }
 #else
 #define INDEXES    { 0, 1, 2, 3, 4, 5, 6, 7 }

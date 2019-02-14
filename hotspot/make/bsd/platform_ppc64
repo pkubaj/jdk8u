@@ -1,0 +1,17 @@
+os_family = bsd
+
+arch = ppc
+
+arch_model = ppc_64
+
+os_arch = bsd_ppc
+
+os_arch_model = bsd_ppc_64
+
+lib_arch = ppc64
+
+compiler = gcc
+
+gnu_dis_arch = ppc64
+
+sysdefs = -DBSD -D_ALLBSD_SOURCE -D_GNU_SOURCE -DPPC64

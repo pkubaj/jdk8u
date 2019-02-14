@@ -22,7 +22,6 @@
  *
  */
 
-#include <fcntl.h>
 #include "precompiled.hpp"
 #include "compiler/compileBroker.hpp"
 #include "gc_interface/collectedHeap.hpp"
@@ -399,7 +398,7 @@ void VMError::report(outputStream* st) {
        case OOM_MMAP_ERROR:
          if (_size) {
            st->print("# Native memory allocation ");
-           st->print((_id == (int)OOM_MALLOC_ERROR) ? "(malloc) failed to allocate " :
+           st->print((_id == (unsigned int)OOM_MALLOC_ERROR) ? "(malloc) failed to allocate " :
                                                  "(mmap) failed to map ");
            jio_snprintf(buf, sizeof(buf), SIZE_FORMAT, _size);
            st->print("%s", buf);

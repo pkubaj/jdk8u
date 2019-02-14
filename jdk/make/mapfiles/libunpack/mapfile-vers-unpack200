@@ -26,6 +26,9 @@
 # Define library interface.
 
 SUNWprivate_1.1 {
+	global:
+	    environ;
+	    __progname;
 	local:
 	    *;
 };

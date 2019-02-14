@@ -36,9 +36,10 @@ public class Send12k {
 
     public static void main(String args[]) throws Exception {
 
-         int SEND_SIZE=0;
+         String osName = System.getProperty("os.name");
+         int SEND_SIZE;
 
-         if(System.getProperty("os.name").contains("Mac")) {
+         if(osName.endsWith("BSD") || osName.contains("Mac")) {
              SEND_SIZE = 16 * 576;
          } else {
              SEND_SIZE = 16 * 1024;

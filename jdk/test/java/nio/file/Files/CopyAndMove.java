@@ -651,7 +651,7 @@ public class CopyAndMove {
 
                 // check POSIX attributes are copied
                 String os = System.getProperty("os.name");
-                if ((os.equals("SunOS") || os.equals("Linux")) &&
+                if ((os.equals("SunOS") || os.equals("Linux") || os.endsWith("BSD")) &&
                     testPosixAttributes)
                 {
                     checkPosixAttributes(
@@ -1155,7 +1155,7 @@ public class CopyAndMove {
     static void randomizeAttributes(Path file) throws IOException {
         String os = System.getProperty("os.name");
         boolean isWindows = os.startsWith("Windows");
-        boolean isUnix = os.equals("SunOS") || os.equals("Linux");
+        boolean isUnix = os.equals("SunOS") || os.equals("Linux") || os.endsWith("BSD");
         boolean isDirectory = isDirectory(file, NOFOLLOW_LINKS);
 
         if (isUnix) {

@@ -28,7 +28,7 @@
 
 
 int UTIL_IsBigEndianPlatform() {
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
     return 0;
 #else
     return 1;

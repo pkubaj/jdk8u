@@ -34,7 +34,7 @@ DEMANGLE        = $(DEMANGLER) < $@ > .$@ && mv -f .$@ $@
 CC_COMPILE       = $(CC) $(CXXFLAGS) $(CFLAGS)
 CXX_COMPILE      = $(CXX) $(CXXFLAGS) $(CFLAGS)
 
-AS.S            = $(AS) $(ASFLAGS)
+AS.S            = $(AS) -x assembler-with-cpp $(ASFLAGS)
 
 COMPILE.CC       = $(CC_COMPILE) -c
 GENASM.CC        = $(CC_COMPILE) -S

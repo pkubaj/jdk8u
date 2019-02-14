@@ -38,7 +38,10 @@ CFLAGS$(HOTSPARC_GENERIC) += $(OPT_CFLAGS/BYFILE)
 # to inhibit the effect of the previous line on CFLAGS.
 
 # Linker mapfile
-MAPFILE = $(GAMMADIR)/make/bsd/makefiles/mapfile-vers-product
+ifeq ($(OS_VENDOR), Darwin)
+  MAPSUFX = .macosx
+endif
+MAPFILE = $(GAMMADIR)/make/bsd/makefiles/mapfile-vers-product$(MAPSUFX)
 
 SYSDEFS += -DPRODUCT
 VERSION = optimized

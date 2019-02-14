@@ -146,6 +146,9 @@
 #ifdef TARGET_OS_ARCH_aix_ppc
 # include "vmStructs_aix_ppc.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_bsd_ppc
+# include "vmStructs_bsd_ppc.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_bsd_x86
 # include "vmStructs_bsd_x86.hpp"
 #endif
@@ -2556,6 +2559,8 @@ typedef TwoOopHashtable<Symbol*, mtClass>     SymbolTwoOopHashtable;
   /**********************/                                                \
   /* frame              */                                                \
   /**********************/                                                \
+  NOT_ZERO(PPC64_ONLY(declare_constant(frame::abi_minframe_size)))        \
+  NOT_ZERO(PPC64_ONLY(declare_constant(frame::entry_frame_locals_size)))  \
                                                                           \
   NOT_ZERO(X86_ONLY(declare_constant(frame::entry_frame_call_wrapper_offset)))      \
   declare_constant(frame::pc_return_offset)                               \

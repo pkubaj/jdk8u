@@ -33,7 +33,7 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <ctype.h>
-#ifdef MACOSX
+#ifdef _ALLBSD_SOURCE
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <unistd.h> /* gethostname */
@@ -99,9 +99,9 @@ Java_java_net_Inet6AddressImpl_getLocalHostName(JNIEnv *env, jobject this) {
     return (*env)->NewStringUTF(env, hostname);
 }
 
-#ifdef MACOSX
+#ifdef _ALLBSD_SOURCE
 /* also called from Inet4AddressImpl.c */
-__private_extern__ jobjectArray
+jobjectArray
 lookupIfLocalhost(JNIEnv *env, const char *hostname, jboolean includeV6)
 {
     jobjectArray result = NULL;
@@ -255,6 +255,19 @@ Java_java_net_Inet6AddressImpl_lookupAllHostAddr(JNIEnv *env, jobject this,
     }
     hostname = JNU_GetStringPlatformChars(env, host, JNI_FALSE);
     CHECK_NULL_RETURN(hostname, NULL);
+
+#ifdef _ALLBSD_SOURCE
+    /*
+     * If we're looking up the local machine, attempt to get the address
+     * from getifaddrs. This ensures we get an IPv6 address for the local
+     * machine.
+     */
+    ret = lookupIfLocalhost(env, hostname, JNI_TRUE);
+    if (ret != NULL || (*env)->ExceptionCheck(env)) {
+        JNU_ReleaseStringPlatformChars(env, host, hostname);
+        return ret;
+    }
+#endif
 
 #ifdef AF_INET6
     /* Try once, with our static buffer. */

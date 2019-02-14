@@ -66,7 +66,7 @@ public class DefaultAsynchronousChannelProvider {
             return createProvider("sun.nio.ch.SolarisAsynchronousChannelProvider");
         if (osname.equals("Linux"))
             return createProvider("sun.nio.ch.LinuxAsynchronousChannelProvider");
-        if (osname.contains("OS X"))
+        if (osname.endsWith("BSD") || osname.contains("OS X"))
             return createProvider("sun.nio.ch.BsdAsynchronousChannelProvider");
         if (osname.equals("AIX"))
             return createProvider("sun.nio.ch.AixAsynchronousChannelProvider");

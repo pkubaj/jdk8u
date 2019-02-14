@@ -106,7 +106,7 @@ case `uname -s` in
     xx=`find ${jreloc}/lib -name libdt_socket.so`
     libloc=`dirname ${xx}`
     ;;
-  Darwin)
+  *BSD | Darwin)
     libloc=${jreloc}/lib
     ;;
   Windows*)

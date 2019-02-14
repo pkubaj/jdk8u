@@ -34,7 +34,7 @@ class VMError : public StackObj {
   friend class VM_ReportJavaOutOfMemory;
   friend class Decoder;
 
-  int          _id;          // Solaris/Linux signals: 0 - SIGRTMAX
+  unsigned int _id;          // Solaris/Linux signals: 0 - SIGRTMAX
                              // Windows exceptions: 0xCxxxxxxx system errors
                              //                     0x8xxxxxxx system warnings
 

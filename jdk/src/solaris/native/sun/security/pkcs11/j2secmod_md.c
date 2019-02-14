@@ -54,7 +54,7 @@ JNIEXPORT jlong JNICALL Java_sun_security_pkcs11_Secmod_nssGetLibraryHandle
     }
 
     // look up existing handle only, do not load
-#if defined(AIX)
+#if defined(AIX) || !defined(RTLD_NOLOAD)
     void *hModule = dlopen(libName, RTLD_LAZY);
 #else
     void *hModule = dlopen(libName, RTLD_NOLOAD);

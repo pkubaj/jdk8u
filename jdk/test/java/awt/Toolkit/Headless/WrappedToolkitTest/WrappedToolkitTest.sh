@@ -59,7 +59,7 @@ pass()
 # Checking for proper OS
 OS=`uname -s`
 case "$OS" in
-   SunOS | Linux | Darwin | CYGWIN* )
+   SunOS | Linux | *BSD | Darwin | AIX )
       FILESEP="/"
       ;;
     

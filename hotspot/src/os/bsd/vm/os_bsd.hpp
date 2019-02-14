@@ -58,12 +58,16 @@ class Bsd {
   // For signal flags diagnostics
   static int sigflags[MAXSIGNUM];
 
+  static address   _initial_thread_stack_bottom;
+  static uintptr_t _initial_thread_stack_size;
+
 #ifdef __APPLE__
   // mach_absolute_time
   static mach_timebase_info_data_t _timebase_info;
   static volatile uint64_t         _max_abstime;
 #else
   static int (*_clock_gettime)(clockid_t, struct timespec *);
+  static int (*_getcpuclockid)(pthread_t, clockid_t *);
 #endif
 
   static GrowableArray<int>* _cpu_to_node;
@@ -93,6 +97,9 @@ class Bsd {
   static void hotspot_sigmask(Thread* thread);
 
   static pid_t gettid();
+
+  static address   initial_thread_stack_bottom(void)                { return _initial_thread_stack_bottom; }
+  static uintptr_t initial_thread_stack_size(void)                  { return _initial_thread_stack_size; }
 
   static int page_size(void)                                        { return _page_size; }
   static void set_page_size(int val)                                { _page_size = val; }
@@ -146,6 +153,13 @@ class Bsd {
     return _clock_gettime != NULL;
 #endif
   }
+
+  // pthread_cond clock suppport
+  private:
+  static pthread_condattr_t _condattr[1];
+
+  public:
+  static pthread_condattr_t* condAttr() { return _condattr; }
 
   // Stack repair handling
 
@@ -212,7 +226,7 @@ class PlatformEvent : public CHeapObj<mtInternal> {
   public:
     PlatformEvent() {
       int status;
-      status = pthread_cond_init (_cond, NULL);
+      status = pthread_cond_init (_cond, os::Bsd::condAttr());
       assert_status(status == 0, status, "cond_init");
       status = pthread_mutex_init (_mutex, NULL);
       assert_status(status == 0, status, "mutex_init");
@@ -227,14 +241,19 @@ class PlatformEvent : public CHeapObj<mtInternal> {
     void park () ;
     void unpark () ;
     int  TryPark () ;
-    int  park (jlong millis) ;
+    int  park (jlong millis) ; // relative timed-wait only
     void SetAssociation (Thread * a) { _Assoc = a ; }
 };
 
 class PlatformParker : public CHeapObj<mtInternal> {
   protected:
+    enum {
+        REL_INDEX = 0,
+        ABS_INDEX = 1
+    };
+    int _cur_index;  // which cond is in use: -1, 0, 1
     pthread_mutex_t _mutex [1] ;
-    pthread_cond_t  _cond  [1] ;
+    pthread_cond_t  _cond  [2] ; // one for relative times and one for abs.
 
   public:       // TODO-FIXME: make dtor private
     ~PlatformParker() { guarantee (0, "invariant") ; }
@@ -242,10 +261,13 @@ class PlatformParker : public CHeapObj<mtInternal> {
   public:
     PlatformParker() {
       int status;
-      status = pthread_cond_init (_cond, NULL);
-      assert_status(status == 0, status, "cond_init");
+      status = pthread_cond_init (&_cond[REL_INDEX], os::Bsd::condAttr());
+      assert_status(status == 0, status, "cond_init rel");
+      status = pthread_cond_init (&_cond[ABS_INDEX], NULL);
+      assert_status(status == 0, status, "cond_init abs");
       status = pthread_mutex_init (_mutex, NULL);
       assert_status(status == 0, status, "mutex_init");
+      _cur_index = -1; // mark as unused
     }
 };
 

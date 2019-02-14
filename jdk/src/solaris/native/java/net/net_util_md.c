@@ -46,6 +46,10 @@
 #endif
 #endif
 
+#ifdef __OpenBSD__
+#include <sys/socketvar.h>
+#endif
+
 #ifdef __solaris__
 #include <sys/sockio.h>
 #include <stropts.h>
@@ -81,7 +85,7 @@
 
 void setDefaultScopeID(JNIEnv *env, struct sockaddr *him)
 {
-#ifdef MACOSX
+#ifdef _ALLBSD_SOURCE
     static jclass ni_class = NULL;
     static jfieldID ni_defaultIndexID;
     if (ni_class == NULL) {

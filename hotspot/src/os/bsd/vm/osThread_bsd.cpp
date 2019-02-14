@@ -30,7 +30,7 @@
 
 void OSThread::pd_initialize() {
   assert(this != NULL, "check");
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
   _thread_id        = 0;
 #else
   _thread_id        = NULL;

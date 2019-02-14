@@ -36,20 +36,13 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-#ifdef _ALLBSD_SOURCE
-#include <unistd.h>
-#include <sys/param.h>
-#endif
-
 #include "jvm.h"
 #include "jni_util.h"
 #include "net_util.h"
 
 #include "java_net_Inet4AddressImpl.h"
 
-#if defined(__GLIBC__) || (defined(__FreeBSD__) && (__FreeBSD_version >= 601104))
-#define HAS_GLIBC_GETHOSTBY_R   1
-#endif
+extern jobjectArray lookupIfLocalhost(JNIEnv *env, const char *hostname, jboolean includeV6);
 
 
 #if defined(_ALLBSD_SOURCE) && !defined(HAS_GLIBC_GETHOSTBY_R)
@@ -412,6 +405,17 @@ Java_java_net_Inet4AddressImpl_lookupAllHostAddr(JNIEnv *env, jobject this,
                         (char *)hostname);
         JNU_ReleaseStringPlatformChars(env, host, hostname);
         return NULL;
+    }
+#endif
+
+#ifdef _ALLBSD_SOURCE
+    /* If we're looking up the local machine, bypass DNS lookups and get
+     * address from getifaddrs.
+     */
+    ret = lookupIfLocalhost(env, hostname, JNI_FALSE);
+    if (ret != NULL || (*env)->ExceptionCheck(env)) {
+        JNU_ReleaseStringPlatformChars(env, host, hostname);
+        return ret;
     }
 #endif
 

@@ -94,6 +94,9 @@
 #ifdef TARGET_OS_ARCH_aix_ppc
 # include "globals_aix_ppc.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_bsd_ppc
+# include "globals_bsd_ppc.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_bsd_x86
 # include "globals_bsd_x86.hpp"
 #endif

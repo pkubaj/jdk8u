@@ -93,6 +93,8 @@ function isDuplicateImages(screenShot, goldenDir) {
         f2 = new File(sb.append(fsep + "linux.png").toString());
     } else if (OSInfo.getOSType() == OSType.MACOSX) {
         f2 = new File(sb.append(fsep + "macosx.png").toString());
+    } else if (OSInfo.getOSType() == OSType.BSD) {
+        f2 = new File(sb.append(fsep + "bsd.png").toString());
     }
     if (f1.exists() && f2.exists()) {
         var image1 = new AWTImage(PNGDecoder.decode(f1.getAbsolutePath()));

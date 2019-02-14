@@ -154,7 +154,7 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_LIBS],
   # How to compile shared libraries.
   #
 
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     PICFLAG="-fPIC"
     C_FLAG_REORDER=''
     CXX_FLAG_REORDER=''
@@ -266,7 +266,7 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_OPTIMIZATION],
   # fi
 
   # Generate make dependency files
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     C_FLAG_DEPS="-MMD -MF"
   elif test "x$TOOLCHAIN_TYPE" = xsolstudio; then
     C_FLAG_DEPS="-xMMD -xMF"
@@ -283,7 +283,7 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_OPTIMIZATION],
   # info flags for toolchains unless we know they work.
   # See JDK-8207057.
   ASFLAGS_DEBUG_SYMBOLS=""
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     if test "x$OPENJDK_TARGET_CPU_BITS" = "x64" && test "x$DEBUG_LEVEL" = "xfastdebug"; then
       CFLAGS_DEBUG_SYMBOLS="-g1"
       CXXFLAGS_DEBUG_SYMBOLS="-g1"
@@ -334,7 +334,7 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_OPTIMIZATION],
   else
     # The remaining toolchains share opt flags between CC and CXX;
     # setup for C and duplicate afterwards.
-    if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
       if test "x$OPENJDK_TARGET_OS" = xmacosx; then
         # On MacOSX we optimize for size, something
         # we should do for all platforms?
@@ -452,7 +452,7 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_JDK],
 
   # Setup compiler/platform specific flags to CFLAGS_JDK,
   # CXXFLAGS_JDK and CCXXFLAGS_JDK (common to C and CXX?)
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     # these options are used for both C and C++ compiles
     CCXXFLAGS_JDK="$CCXXFLAGS $CCXXFLAGS_JDK -Wall -Wno-parentheses -Wextra -Wno-unused -Wno-unused-parameter -Wformat=2 \
         -pipe -D_GNU_SOURCE -D_REENTRANT -D_LARGEFILE64_SOURCE"
@@ -548,6 +548,9 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_JDK],
     else
       CCXXFLAGS_JDK="$CCXXFLAGS_JDK -D_LITTLE_ENDIAN"
     fi
+    if test "x$OPENJDK_TARGET_OS" = xbsd; then
+      CCXXFLAGS_JDK="$CCXXFLAGS_JDK -DVM_LITTLE_ENDIAN"
+    fi
   else
     # Same goes for _BIG_ENDIAN. Do we really need to set *ENDIAN on Solaris if they
     # are defined in the system?
@@ -555,6 +558,9 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_JDK],
       CCXXFLAGS_JDK="$CCXXFLAGS_JDK -D_BIG_ENDIAN="
     else
       CCXXFLAGS_JDK="$CCXXFLAGS_JDK -D_BIG_ENDIAN"
+    fi
+    if test "x$OPENJDK_TARGET_OS" = xbsd; then
+      CCXXFLAGS_JDK="$CCXXFLAGS_JDK -DVM_BIG_ENDIAN"
     fi
   fi
   if test "x$OPENJDK_TARGET_CPU" = xppc64le; then
@@ -661,7 +667,7 @@ AC_DEFUN_ONCE([FLAGS_SETUP_COMPILER_FLAGS_FOR_JDK],
     fi
     LDFLAGS_JDKEXE="${LDFLAGS_JDK} /STACK:$LDFLAGS_STACK_SIZE"
   else
-    if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
       # If this is a --hash-style=gnu system, use --hash-style=both, why?
       # We have previously set HAS_GNU_HASH if this is the case
       if test -n "$HAS_GNU_HASH"; then

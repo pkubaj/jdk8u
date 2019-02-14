@@ -277,5 +277,9 @@ class Bytes: AllStatic {
 #if defined(TARGET_OS_ARCH_linux_ppc)
 #include "bytes_linux_ppc.inline.hpp"
 #endif
+#if defined(TARGET_OS_ARCH_bsd_ppc)
+#include "bytes_bsd_ppc.inline.hpp"
+#endif
+
 
 #endif // CPU_PPC_VM_BYTES_PPC_HPP

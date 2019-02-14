@@ -140,7 +140,7 @@ void DAUDIO_GetFormats(INT32 mixerIndex, INT32 deviceID, int isSource, void* cre
                                       (float) ((int) sr->samp_rates[s]),
                                       DAUDIO_PCM, /* encoding - let's only do PCM */
                                       (bits[b] > 8)?TRUE:TRUE, /* isSigned */
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
                                       FALSE /* little endian */
 #else
                                       (bits[b] > 8)?TRUE:FALSE  /* big endian */

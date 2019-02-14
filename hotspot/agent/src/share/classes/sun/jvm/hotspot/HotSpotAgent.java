@@ -33,6 +33,7 @@ import sun.jvm.hotspot.debugger.DebuggerException;
 import sun.jvm.hotspot.debugger.JVMDebugger;
 import sun.jvm.hotspot.debugger.MachineDescription;
 import sun.jvm.hotspot.debugger.MachineDescriptionAMD64;
+import sun.jvm.hotspot.debugger.MachineDescriptionPPC64;
 import sun.jvm.hotspot.debugger.MachineDescriptionIA64;
 import sun.jvm.hotspot.debugger.MachineDescriptionIntelX86;
 import sun.jvm.hotspot.debugger.MachineDescriptionSPARC32Bit;
@@ -588,6 +589,8 @@ public class HotSpotAgent {
             machDesc = new MachineDescriptionIA64();
         } else if (cpu.equals("amd64")) {
             machDesc = new MachineDescriptionAMD64();
+        } else if (cpu.equals("ppc64")) {
+            machDesc = new MachineDescriptionPPC64();
         } else if (cpu.equals("sparc")) {
             if (LinuxDebuggerLocal.getAddressSize()==8) {
                     machDesc = new MachineDescriptionSPARC64Bit();

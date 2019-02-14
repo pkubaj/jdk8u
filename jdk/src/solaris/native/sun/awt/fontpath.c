@@ -23,9 +23,9 @@
  * questions.
  */
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(_ALLBSD_SOURCE)
 #include <string.h>
-#endif /* __linux__ */
+#endif /* __linux__ || _ALLBSD_SOURCE */
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -113,7 +113,6 @@ static char *fullSolarisFontPath[] = {
     OPENWINHOMELIB "locale/ar/X11/fonts/Type1",
     NULL, /* terminates the list */
 };
-
 #elif defined( __linux__)
 /* All the known interesting locations we have discovered on
  * various flavors of Linux
@@ -138,6 +137,20 @@ static char *fullLinuxFontPath[] = {
 static char *fullAixFontPath[] = {
     "/usr/lpp/X11/lib/X11/fonts/Type1",    /* from X11.fnt.iso_T1  */
     "/usr/lpp/X11/lib/X11/fonts/TrueType", /* from X11.fnt.ucs.ttf */
+    NULL, /* terminates the list */
+};
+#elif defined(_ALLBSD_SOURCE)
+static char *fullBSDFontPath[] = {
+    PACKAGE_PATH "/lib/X11/fonts/TrueType",
+    PACKAGE_PATH "/lib/X11/fonts/truetype",
+    PACKAGE_PATH "/lib/X11/fonts/TTF",
+    PACKAGE_PATH "/lib/X11/fonts/OTF",
+    PACKAGE_PATH "/share/fonts/TrueType",
+    PACKAGE_PATH "/share/fonts/truetype",
+    PACKAGE_PATH "/share/fonts/TTF",
+    PACKAGE_PATH "/share/fonts/OTF",
+    PACKAGE_PATH "/lib/X11/fonts/Type1",
+    PACKAGE_PATH "/share/fonts/Type1",
     NULL, /* terminates the list */
 };
 #endif
@@ -381,7 +394,7 @@ static char **getX11FontPath ()
 
 #endif /* !HEADLESS */
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(_ALLBSD_SOURCE)
 /* from awt_LoadLibrary.c */
 JNIEXPORT jboolean JNICALL AWTIsHeadless();
 #endif
@@ -512,6 +525,8 @@ static char *getPlatformFontPathChars(JNIEnv *env, jboolean noType1, jboolean is
     knowndirs = fullSolarisFontPath;
 #elif defined(_AIX)
     knowndirs = fullAixFontPath;
+#elif defined(_ALLBSD_SOURCE)
+    knowndirs = fullBSDFontPath;
 #endif
     /* REMIND: this code requires to be executed when the GraphicsEnvironment
      * is already initialised. That is always true, but if it were not so,
@@ -520,8 +535,8 @@ static char *getPlatformFontPathChars(JNIEnv *env, jboolean noType1, jboolean is
      */
 #ifndef HEADLESS
     if (isX11) { // The following only works in an x11 environment.
-#if defined(__linux__)
-    /* There's no headless build on linux ... */
+#if defined(__linux__) || defined(_ALLBSD_SOURCE)
+    /* There's no headless build on linux and BSD ... */
     if (!AWTIsHeadless()) { /* .. so need to call a function to check */
 #endif
       /* Using the X11 font path to locate font files is now a fallback
@@ -536,7 +551,7 @@ static char *getPlatformFontPathChars(JNIEnv *env, jboolean noType1, jboolean is
         x11dirs = getX11FontPath();
     }
     AWT_UNLOCK();
-#if defined(__linux__)
+#if defined(__linux__) || defined(_ALLBSD_SOURCE)
     }
 #endif
     }
@@ -1247,7 +1262,7 @@ Java_sun_font_FontConfigManager_getFontConfig
              */
             if (fontformat != NULL
                 && (strcmp((char*)fontformat, "TrueType") != 0)
-#if defined(__linux__) || defined(_AIX)
+#if defined(__linux__) || defined(_AIX) || defined(_ALLBSD_SOURCE)
                 && (strcmp((char*)fontformat, "Type 1") != 0)
                 && !(isOpenJDK && (strcmp((char*)fontformat, "CFF") == 0))
 #endif

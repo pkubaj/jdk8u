@@ -58,13 +58,18 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/sockio.h>
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #include <net/if_var.h>
+#elif defined(__OpenBSD__)
+#include <netinet/if_ether.h>
+#include <netinet6/in6_var.h>
+#elif defined(__NetBSD__)
+#include <net/if_ether.h>
+#endif
 #include <net/if_dl.h>
 #include <netinet/in_var.h>
 #include <ifaddrs.h>
-#endif
 #endif
 
 #include "jvm.h"

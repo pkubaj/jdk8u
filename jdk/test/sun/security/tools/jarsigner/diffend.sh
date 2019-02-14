@@ -47,6 +47,13 @@ case "$OS" in
     FS="/"
     CP="${FS}bin${FS}cp -f"
     ;;
+  *BSD )
+    NULL=/dev/null
+    PS=":"
+    FS="/"
+    PATH="${PATH}${PS}${FS}usr${FS}local${FS}bin"
+    CP="${FS}bin${FS}cp -f"
+    ;;
   CYGWIN* )
     NULL=/dev/null
     PS=";"

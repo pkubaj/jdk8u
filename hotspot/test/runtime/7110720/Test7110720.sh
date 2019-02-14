@@ -28,7 +28,7 @@ echo "TESTSRC=${TESTSRC}"
 # set platform-dependent variables
 OS=`uname -s`
 case "$OS" in
-  SunOS | Linux | Darwin )
+  SunOS | Linux | *BSD | Darwin )
     FS="/"
     RM=/bin/rm
     CP=/bin/cp

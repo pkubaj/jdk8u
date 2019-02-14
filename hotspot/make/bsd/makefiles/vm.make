@@ -107,7 +107,7 @@ CXXFLAGS/BYFILE = $(CXXFLAGS/$@)
 # File specific flags
 CXXFLAGS += $(CXXFLAGS/BYFILE)
 
-ifdef DEFAULT_LIBPATH
+ifneq ($(DEFAULT_LIBPATH),)
 CXXFLAGS += -DDEFAULT_LIBPATH="\"$(DEFAULT_LIBPATH)\""
 endif
 
@@ -130,9 +130,7 @@ endif
 
 LIBS += -lm
 
-ifeq ($(USE_CLANG),)
-  LIBS += -pthread
-endif
+LIBS += -pthread
 
 # By default, link the *.o into the library, not the executable.
 LINK_INTO$(LINK_INTO) = LIBJVM

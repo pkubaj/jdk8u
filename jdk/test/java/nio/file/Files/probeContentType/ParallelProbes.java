@@ -28,7 +28,7 @@ import java.util.ArrayList;
 
 /* @test
  * @summary Test probing content type simultaneously from multiple threads.
- * @requires (os.family == "linux") | (os.family == "solaris")
+ * @requires (os.family == "linux") | (os.family == "solaris") | (os.family == "bsd")
  * @run main ParallelProbes 10
  */
 public class ParallelProbes {

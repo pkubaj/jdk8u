@@ -33,6 +33,7 @@ SUNWprivate_1.1 {
 		environ;	# Public symbols and required by Java run time
 		_environ;
 		__environ_lock;
+		__progname;
 
 	local:
 		*;

@@ -75,6 +75,9 @@ class ThreadLocalStorage : AllStatic {
 #ifdef TARGET_OS_ARCH_aix_ppc
 # include "threadLS_aix_ppc.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_bsd_ppc
+# include "threadLS_bsd_ppc.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_bsd_x86
 # include "threadLS_bsd_x86.hpp"
 #endif

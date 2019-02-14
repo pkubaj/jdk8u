@@ -60,7 +60,7 @@ case "$OS" in
   Linux )
     FS="/"
     ;;
-  Darwin )
+  *BSD | Darwin )
     FS="/"
     ;;
   AIX )

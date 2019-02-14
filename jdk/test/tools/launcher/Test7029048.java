@@ -223,7 +223,7 @@ public class Test7029048 extends TestHelper {
         } else if (isSolaris && passes < 9) {
             throw new Exception("Test7029048: FAIL: " +
                     "all tests did not run, expected " + 9 + " got " + passes);
-        } else if (isLinux && passes < 6) {
+        } else if ((isLinux || isBSD) && passes < 6) {
              throw new Exception("Test7029048: FAIL: " +
                     "all tests did not run, expected " + 6 + " got " + passes);
         } else {

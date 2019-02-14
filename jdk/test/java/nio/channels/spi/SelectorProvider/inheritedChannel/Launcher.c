@@ -17,6 +17,12 @@
 
 #include "Launcher.h"
 
+#ifdef _ALLBSD_SOURCE
+#define FD_DIR "/dev/fd"
+#else
+#define FD_DIR "/proc/self/fd"
+#endif
+
 /*
  * Throws the exception of the given class name and detail message
  */
@@ -135,7 +141,7 @@ JNIEXPORT void JNICALL Java_Launcher_launch0
     }
     close(thisFd);
 
-    if ((dp = opendir("/proc/self/fd")) == NULL) {
+    if ((dp = opendir(FD_DIR)) == NULL) {
         _exit(-1);
     }
 

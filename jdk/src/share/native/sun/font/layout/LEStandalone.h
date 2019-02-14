@@ -136,7 +136,7 @@ enum LEErrorCode {
 #define U_CAPI extern "C"
 
 #if !defined(U_IS_BIG_ENDIAN)
-    #ifdef _LITTLE_ENDIAN
+    #ifdef VM_LITTLE_ENDIAN
         #define U_IS_BIG_ENDIAN 0
     #endif
 #endif
