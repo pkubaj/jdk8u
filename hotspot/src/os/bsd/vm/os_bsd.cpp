@@ -189,7 +189,9 @@ julong os::Bsd::available_memory() {
 #ifdef __FreeBSD__
   static const char *vm_stats[] = {
     "vm.stats.vm.v_free_count",
+#if __FreeBSD_version < 1200016
     "vm.stats.vm.v_cache_count",
+#endif
     "vm.stats.vm.v_inactive_count"
   };
   size_t size;

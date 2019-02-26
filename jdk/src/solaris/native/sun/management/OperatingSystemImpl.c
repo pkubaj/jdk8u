@@ -368,7 +368,9 @@ Java_sun_management_OperatingSystemImpl_getFreePhysicalMemorySize
 #elif defined(__FreeBSD__)
     static const char *vm_stats[] = {
        "vm.stats.vm.v_free_count",
+#if __FreeBSD_version < 1200016
        "vm.stats.vm.v_cache_count",
+#endif
        /* "vm.stats.vm.v_inactive_count", */
        NULL
     };
