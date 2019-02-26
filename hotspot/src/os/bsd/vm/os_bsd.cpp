@@ -775,6 +775,11 @@ static void *java_start(Thread *thread) {
   guarantee(unique_thread_id != 0, "unique thread id was not found");
   osthread->set_unique_thread_id(unique_thread_id);
 #endif
+#ifdef __FreeBSD__
+  uint64_t unique_thread_id = os::Bsd::gettid();
+  guarantee(unique_thread_id != 0, "unique thread id was not found");
+  osthread->set_unique_thread_id(unique_thread_id);
+#endif
   // initialize signal mask for this thread
   os::Bsd::hotspot_sigmask(thread);
 
@@ -936,6 +941,11 @@ bool os::create_attached_thread(JavaThread* thread) {
 #ifdef __APPLE__
   uint64_t unique_thread_id = locate_unique_thread_id(osthread->thread_id());
   guarantee(unique_thread_id != 0, "just checking");
+  osthread->set_unique_thread_id(unique_thread_id);
+#endif
+#ifdef __FreeBSD__
+  uint64_t unique_thread_id = os::Bsd::gettid();
+  guarantee(unique_thread_id != 0, "unique thread id was not found");
   osthread->set_unique_thread_id(unique_thread_id);
 #endif
   osthread->set_pthread_id(::pthread_self());
