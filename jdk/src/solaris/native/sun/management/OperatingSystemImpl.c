@@ -436,13 +436,6 @@ Java_sun_management_OperatingSystemImpl_getTotalPhysicalMemorySize
 #endif
 }
 
-
-#ifdef _ALLBSD_SOURCE
-#define FD_DIR "/dev/fd"
-#else
-#define FD_DIR "/proc/self/fd"
-#endif
-
 JNIEXPORT jlong JNICALL
 Java_sun_management_OperatingSystemImpl_getOpenFileDescriptorCount
   (JNIEnv *env, jobject mbean)
