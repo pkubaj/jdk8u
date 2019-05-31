@@ -2407,8 +2407,10 @@ static char* anon_mmap(char* requested_addr, size_t bytes, size_t alignment_hint
   if (fixed) {
     assert((uintptr_t)requested_addr % os::Bsd::page_size() == 0, "unaligned address");
     flags |= MAP_FIXED;
+#ifndef __OpenBSD__
   } else if (alignment_hint > 0) {
     flags |= MAP_ALIGNED(ffs(alignment_hint) - 1);
+#endif
   }
 
   // Map reserved/uncommitted pages PROT_NONE so we fail early if we
