@@ -217,7 +217,7 @@ JVM_handle_bsd_signal(int sig, siginfo_t* info, void* ucVoid, int abort_if_unrec
   address const pc = uc ? os::Bsd::ucontext_get_pc(uc) : NULL;
 
   // retrieve crash address
-  address const addr = info ? (const address) info->si_addr : NULL;
+  address addr = info ? (address) info->si_addr : NULL;
 
   // SafeFetch 32 handling:
   // - make it work if _thread is null
