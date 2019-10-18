@@ -69,6 +69,11 @@ class BsdNativeDispatcher extends UnixNativeDispatcher {
     private static native void initIDs();
 
     static {
-         initIDs();
+        AccessController.doPrivileged(new PrivilegedAction<Void>() {
+            public Void run() {
+                System.loadLibrary("nio");
+                return null;
+        }});
+        initIDs();
     }
 }
