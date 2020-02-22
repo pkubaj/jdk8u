@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,27 +21,35 @@
  * questions.
  */
 
-/*
+import java.security.InvalidKeyException;
+import java.security.PublicKey;
+import java.security.Signature;
+import java.util.*;
+
+/**
  * @test
- * @bug 8031321
- * @library /testlibrary /testlibrary/whitebox /compiler/whitebox ..
- * @build AddnTestL
- * @run main ClassFileInstaller sun.hotspot.WhiteBox
- * @run main/othervm -Xbootclasspath/a:. -Xbatch -XX:+UnlockDiagnosticVMOptions -XX:+WhiteBoxAPI
- *                   -XX:+IgnoreUnrecognizedVMOptions -XX:+UseBMI1Instructions AddnTestL
+ * @bug 8225180
+ * @requires os.family == "windows"
+ * @summary SunMSCAPI Signature should throw InvalidKeyException when
+ *          initialized with a null key
  */
 
-import java.lang.reflect.Method;
-
-public class AddnTestL extends AddnTestI {
-
-    protected AddnTestL(Method method) {
-        super(method);
-        isLongOperation = true;
-    }
-
+public class NullKey {
     public static void main(String[] args) throws Exception {
-        BmiIntrinsicBase.verifyTestCase(AddnTestL::new, TestAndnL.AndnLExpr.class.getDeclaredMethods());
-        BmiIntrinsicBase.verifyTestCase(AddnTestL::new, TestAndnL.AndnLCommutativeExpr.class.getDeclaredMethods());
+        List<String> algs = Arrays.asList(
+            "SHA256withRSA", "SHA256withECDSA", "RSASSA-PSS");
+        for (String alg : algs) {
+            Signature sig = Signature.getInstance(alg, "SunMSCAPI");
+            try {
+                sig.initSign(null);
+            } catch (InvalidKeyException e) {
+                // Expected
+            }
+            try {
+                sig.initVerify((PublicKey)null);
+            } catch (InvalidKeyException e) {
+                // Expected
+            }
+        }
     }
 }
