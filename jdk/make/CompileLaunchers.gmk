@@ -176,7 +176,6 @@ define SetupLauncher
           -DPROGNAME='"$1"' $(DPACKAGEPATH) \
           -DPACKAGE_PATH='"$(PACKAGE_PATH)"' \
           $2, \
-      CFLAGS_linux := -fPIC, \
       CFLAGS_solaris := -KPIC -DHAVE_GETHRTIME, \
       CFLAGS_bsd := -fPIC, \
       LDFLAGS := $(LDFLAGS_JDKEXE) \
