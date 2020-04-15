@@ -42328,7 +42328,7 @@ $as_echo "$supports" >&6; }
     if test "x$OPENJDK_TARGET_OS" = xlinux; then
       LDFLAGS_JDKEXE="$LDFLAGS_JDKEXE -Xlinker --allow-shlib-undefined"
     fi
-    if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
       # Enabling pie on 32 bit builds prevents the JVM from allocating a continuous
       # java heap.
       if test "x$OPENJDK_TARGET_CPU_BITS" != "x32"; then
