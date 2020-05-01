@@ -43,12 +43,14 @@
 #include <X11/extensions/XI.h>
 #include <jni.h>
 #include <sizecalc.h>
-#include "robot_common.h"
 #include "canvas.h"
 #include "wsutils.h"
 #include "list.h"
 #include "multiVis.h"
-#if defined(__linux__) || defined(_ALLBSD_SOURCE)
+
+#include "java_awt_event_InputEvent.h"
+
+#if defined(__linux__) || defined(MACOSX) || defined(_ALLBSD_SOURCE)
 #include <sys/socket.h>
 #endif
 
