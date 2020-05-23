@@ -26,26 +26,17 @@
 #ifndef JAVA_MD_SOLINUX_H
 #define JAVA_MD_SOLINUX_H
 
-#if defined(HAVE_GETHRTIME) || defined(__FreeBSD__)
+#include <sys/time.h>
+#ifdef __solaris__
 /*
  * Support for doing cheap, accurate interval timing.
  */
-#ifdef HAVE_GETHRTIME
-#include <sys/time.h>
-#else /* __FreeBSD__ */
-#include <time.h>
-#define gethrtime() __extension__ ({ \
-    struct timespec tp; \
-    clock_gettime(CLOCK_MONOTONIC, &tp); \
-    (uint64_t)tp.tv_sec*1000000 + tp.tv_nsec/1000; \
-})
-#endif /* HAVE_GETHRTIME */
 #define CounterGet()              (gethrtime()/1000)
 #define Counter2Micros(counts)    (counts)
-#else /* ! HAVE_GETHRTIME && ! __FreeBSD__ */
-#define CounterGet()              (0)
-#define Counter2Micros(counts)    (1)
-#endif /* HAVE_GETHRTIME || __FreeBSD__ */
+#else  /* ! __solaris__ */
+uint64_t CounterGet(void);
+#define Counter2Micros(counts)    (counts)
+#endif /* __solaris__ */
 
 /* pointer to environment */
 extern char **environ;
