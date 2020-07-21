@@ -42,7 +42,9 @@
 #include "opto/runtime.hpp"
 #endif
 
+#ifndef TARGET_OS_ARCH_bsd_ppc
 #include <alloca.h>
+#endif
 
 #define __ masm->
 
