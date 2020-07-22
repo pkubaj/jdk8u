@@ -42,7 +42,9 @@
 #include "opto/runtime.hpp"
 #endif
 
-#ifndef TARGET_OS_ARCH_bsd_ppc
+#ifdef _ALLBSD_SOURCE
+#include <stdlib.h>
+#else
 #include <alloca.h>
 #endif
 
