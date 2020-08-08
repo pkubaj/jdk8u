@@ -223,7 +223,10 @@ package.access=sun.,\
                jdk.nashorn.internal.,\
                jdk.nashorn.tools.,\
                jdk.xml.internal.,\
-               com.sun.activation.registries.
+               com.sun.activation.registries.,\
+               jdk.jfr.events.,\
+               jdk.jfr.internal.,\
+               jdk.management.jfr.internal.
 
 #
 # List of comma-separated packages that start with or equal this string
@@ -273,7 +276,10 @@ package.definition=sun.,\
                    jdk.nashorn.internal.,\
                    jdk.nashorn.tools.,\
                    jdk.xml.internal.,\
-                   com.sun.activation.registries.
+                   com.sun.activation.registries.,\
+                   jdk.jfr.events.,\
+                   jdk.jfr.internal.,\
+                   jdk.management.jfr.internal.
 
 #
 # Determines whether this properties file can be appended to
@@ -1008,6 +1014,16 @@ jdk.xml.dsig.secureValidationPolicy=\
 jceks.key.serialFilter = java.lang.Enum;java.security.KeyRep;\
   java.security.KeyRep$Type;javax.crypto.spec.SecretKeySpec;!*
 
+# The iteration count used for password-based encryption (PBE) in JCEKS
+# keystores. Values in the range 10000 to 5000000 are considered valid.
+# If the value is out of this range, or is not a number, or is unspecified;
+# a default of 200000 is used.
+#
+# If the system property jdk.jceks.iterationCount is also specified, it
+# supersedes the security property value defined here.
+#
+#jdk.jceks.iterationCount = 200000
+
 #
 # Disabled mechanisms for the Simple Authentication and Security Layer (SASL)
 #
@@ -1084,3 +1100,16 @@ jdk.security.caDistrustPolicies=SYMANTEC_TLS
 # security property value defined here.
 #
 #jdk.security.krb5.default.initiate.credential=always-impersonate
+
+#
+# Trust Anchor Certificates - CA Basic Constraint check
+#
+# X.509 v3 certificates used as Trust Anchors (to validate signed code or TLS
+# connections) must have the cA Basic Constraint field set to 'true'. Also, if
+# they include a Key Usage extension, the keyCertSign bit must be set. These
+# checks, enabled by default, can be disabled for backward-compatibility
+# purposes with the jdk.security.allowNonCaAnchor System and Security
+# properties. In the case that both properties are simultaneously set, the
+# System value prevails. The default value of the property is "false".
+#
+#jdk.security.allowNonCaAnchor=true
