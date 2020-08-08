@@ -25,7 +25,7 @@
 
 #include <jni.h>
 #include <string.h>
-#if defined(__linux__) || defined(MACOSX)
+#if defined(__linux__) || defined(MACOSX) || defined(_ALLBSD_SOURCE)
 #include <netinet/tcp.h>
 #include <netinet/in.h>
 #endif
@@ -334,7 +334,7 @@ static jboolean flowSupported0() {
 
 // Keep alive options are available for MACOSX and Linux only for
 // the time being.
-#if defined(__linux__) || defined(MACOSX)
+#if defined(__linux__) || defined(MACOSX) || defined(_ALLBSD_SOURCE)
 
 // Map socket option level/name to OS specific constant
 #ifdef __linux__
@@ -346,6 +346,11 @@ static jboolean flowSupported0() {
 #define SOCK_OPT_LEVEL IPPROTO_TCP
 #define SOCK_OPT_NAME_KEEPIDLE TCP_KEEPALIVE
 #define SOCK_OPT_NAME_KEEPIDLE_STR "TCP_KEEPALIVE"
+#endif
+#ifdef _ALLBSD_SOURCE
+#define SOCK_OPT_LEVEL IPPROTO_TCP
+#define SOCK_OPT_NAME_KEEPIDLE TCP_KEEPIDLE
+#define SOCK_OPT_NAME_KEEPIDLE_STR "TCP_KEEPIDLE"
 #endif
 
 static jint socketOptionSupported(jint sockopt) {
@@ -405,7 +410,7 @@ static jint getTcpSocketOption
     }
 }
 
-#else /* __linux__ || MACOSX */
+#else /* __linux__ || MACOSX || _ALLBSD_SOURCE */
 
 /* Keep alive options not supported for non-linux/non-macosx so throw UnsupportedOpExc */
 
@@ -421,7 +426,7 @@ static jint getTcpSocketOption
         "unsupported socket option");
 }
 
-#endif /* __linux__ || MACOSX*/
+#endif /* __linux__ || MACOSX || _ALLBSD_SOURCE */
 
 #endif /* __solaris__ */
 
@@ -430,7 +435,7 @@ JNIEXPORT jboolean JNICALL Java_sun_net_ExtendedOptionsImpl_flowSupported
     return flowSupported0();
 }
 
-#if defined(__linux__) || defined(MACOSX)
+#if defined(__linux__) || defined(MACOSX) || defined(_ALLBSD_SOURCE)
 
 /*
  * Class:     sun_net_ExtendedOptionsImpl
@@ -455,7 +460,7 @@ JNIEXPORT jboolean JNICALL Java_sun_net_ExtendedOptionsImpl_keepAliveOptionsSupp
     return JNI_FALSE;
 }
 
-#endif /* __linux__ || MACOSX */
+#endif /* __linux__ || MACOSX || _ALLBSD_SOURCE */
 
 /*
  * Class:     sun_net_ExtendedOptionsImpl

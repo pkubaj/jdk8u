@@ -87,7 +87,7 @@ clean()
 # Checking for proper OS
 OS=`uname -s`
 case "$OS" in
-   SunOS | Linux | Darwin )
+   SunOS | Linux | Darwin | *BSD )
       FILESEP="/"
       PATHSEP=":"
       TMP=`cd /tmp; pwd -P`
