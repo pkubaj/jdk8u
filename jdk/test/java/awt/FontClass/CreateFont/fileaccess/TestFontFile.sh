@@ -46,7 +46,7 @@ BIT_FLAG=""
 # set platform-dependent variables
 OS=`uname -s`
 case "$OS" in
-  SunOS | Linux | Darwin )
+  SunOS | Linux | Darwin | *BSD )
     NULL=/dev/null
     PS=":"
     FS="/"
