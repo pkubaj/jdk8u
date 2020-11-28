@@ -144,7 +144,7 @@ case "$OS" in
     fi
     ;;
 
-  AIX | SunOS | Linux )
+  AIX | SunOS | Linux | *BSD )
     ${TESTJAVA}/bin/java -Djava.awt.headless=true \
                          -Dawt.toolkit=sun.awt.X11.XToolkit \
                          TestWrapped sun.awt.X11.XToolkit
