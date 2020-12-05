@@ -180,7 +180,7 @@ public class MouseButtonsAndKeyMasksTest implements MouseListener, KeyListener {
         int keyMods[], keyModsEx[], keys[];
 
 
-        if (OS.contains("linux")) {
+        if (OS.contains("linux") || OS.contains("bsd")) {
             keyMods = new int[]{InputEvent.SHIFT_MASK, InputEvent.CTRL_MASK};
             keyModsEx = new int[]{InputEvent.SHIFT_DOWN_MASK, InputEvent.CTRL_DOWN_MASK};
             keys = new int[]{KeyEvent.VK_SHIFT, KeyEvent.VK_CONTROL};

@@ -103,7 +103,7 @@ public class AutoTestOnTop {
     }
 
     public static void performTesting() {
-        isUnix = osName.equals("Linux") || osName.equals("SunOS");
+        isUnix = osName.equals("Linux") || osName.equals("SunOS") || osName.endsWith("BSD");
 
         Toolkit.getDefaultToolkit().addAWTEventListener(new AWTEventListener() {
                 public void eventDispatched(AWTEvent e) {
