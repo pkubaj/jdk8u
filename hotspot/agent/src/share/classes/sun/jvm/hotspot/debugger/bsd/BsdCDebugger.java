@@ -29,9 +29,11 @@ import java.util.*;
 import sun.jvm.hotspot.debugger.*;
 import sun.jvm.hotspot.debugger.cdbg.*;
 import sun.jvm.hotspot.debugger.x86.*;
+import sun.jvm.hotspot.debugger.aarch64.*;
 import sun.jvm.hotspot.debugger.amd64.*;
 import sun.jvm.hotspot.debugger.ppc64.*;
 import sun.jvm.hotspot.debugger.bsd.x86.*;
+import sun.jvm.hotspot.debugger.bsd.aarch64.*;
 import sun.jvm.hotspot.debugger.bsd.amd64.*;
 import sun.jvm.hotspot.debugger.bsd.ppc64.*;
 import sun.jvm.hotspot.utilities.*;
@@ -96,6 +98,13 @@ class BsdCDebugger implements CDebugger {
         Address pc  = context.getRegisterAsAddress(PPC64ThreadContext.PC);
         if (pc == null) return null;
         return new BsdPPC64CFrame(dbg, sp, pc, BsdDebuggerLocal.getAddressSize());
+    } else if (cpu.equals("aarch64")) {
+       AARCH64ThreadContext context = (AARCH64ThreadContext) thread.getContext();
+       Address fp = context.getRegisterAsAddress(AARCH64ThreadContext.FP);
+       if (fp == null) return null;
+       Address pc  = context.getRegisterAsAddress(AARCH64ThreadContext.PC);
+       if (pc == null) return null;
+       return new BsdAARCH64CFrame(dbg, fp, pc);
     } else {
        throw new DebuggerException(cpu + " is not yet supported");
     }

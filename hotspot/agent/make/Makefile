@@ -49,6 +49,7 @@ sun.jvm.hotspot.compiler \
 sun.jvm.hotspot.debugger \
 sun.jvm.hotspot.debugger.amd64 \
 sun.jvm.hotspot.debugger.bsd \
+sun.jvm.hotspot.debugger.bsd.aarch64 \
 sun.jvm.hotspot.debugger.bsd.amd64 \
 sun.jvm.hotspot.debugger.bsd.ppc64 \
 sun.jvm.hotspot.debugger.bsd.x86 \
@@ -65,6 +66,7 @@ sun.jvm.hotspot.debugger.posix \
 sun.jvm.hotspot.debugger.posix.elf \
 sun.jvm.hotspot.debugger.ppc64 \
 sun.jvm.hotspot.debugger.proc \
+sun.jvm.hotspot.debugger.proc.aarch64 \
 sun.jvm.hotspot.debugger.proc.amd64 \
 sun.jvm.hotspot.debugger.proc.aarch64 \
 sun.jvm.hotspot.debugger.proc.ppc64 \
@@ -144,6 +146,7 @@ sun/jvm/hotspot/compiler/*.java \
 sun/jvm/hotspot/debugger/*.java \
 sun/jvm/hotspot/debugger/amd64/*.java \
 sun/jvm/hotspot/debugger/bsd/*.java \
+sun/jvm/hotspot/debugger/bsd/aarch64/*.java \
 sun/jvm/hotspot/debugger/bsd/amd64/*.java \
 sun/jvm/hotspot/debugger/bsd/ppc64/*.java \
 sun/jvm/hotspot/debugger/bsd/x86/*.java \

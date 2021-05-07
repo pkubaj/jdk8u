@@ -25,6 +25,7 @@
 package sun.jvm.hotspot.debugger.bsd;
 
 import sun.jvm.hotspot.debugger.*;
+import sun.jvm.hotspot.debugger.bsd.aarch64.*;
 import sun.jvm.hotspot.debugger.bsd.amd64.*;
 import sun.jvm.hotspot.debugger.bsd.x86.*;
 import sun.jvm.hotspot.debugger.bsd.ppc64.*;
@@ -38,6 +39,8 @@ class BsdThreadContextFactory {
          return new BsdAMD64ThreadContext(dbg);
       }  else if (cpu.equals("ppc64")) {
           return new BsdPPC64ThreadContext(dbg);
+      } else if (cpu.equals("aarch64")) {
+          return new BsdAARCH64ThreadContext(dbg);
       } else {
          throw new RuntimeException("cpu " + cpu + " is not yet supported");
       }
