@@ -25,7 +25,15 @@
 #ifndef OS_CPU_BSD_AARCH64_VM_BYTES_BSD_AARCH64_INLINE_HPP
 #define OS_CPU_BSD_AARCH64_VM_BYTES_BSD_AARCH64_INLINE_HPP
 
-#include <byteswap.h>
+#if defined(__FreeBSD__)
+#  define bswap_16(x) __bswap16(x)
+#  define bswap_32(x) __bswap32(x)
+#  define bswap_64(x) __bswap64(x)
+#elif defined(__OpenBSD__)
+#  define bswap_16(x) swap16(x)
+#  define bswap_32(x) swap32(x)
+#  define bswap_64(x) swap64(x)
+#endif
 
 // Efficient swapping of data bytes from Java byte
 // ordering to native byte ordering and vice versa.
