@@ -63,7 +63,6 @@
 # include <stdio.h>
 # include <unistd.h>
 # include <sys/resource.h>
-# include <pthread.h>
 # include <sys/stat.h>
 # include <sys/time.h>
 # include <sys/utsname.h>
@@ -71,8 +70,18 @@
 # include <sys/wait.h>
 # include <pwd.h>
 # include <poll.h>
+#ifdef __FreeBSD__
 # include <ucontext.h>
-# include <fpu_control.h>
+# include <sys/sysctl.h>
+# include <sys/procctl.h>
+# include <pthread_np.h>
+# ifndef PROC_STACKGAP_STATUS
+#  define PROC_STACKGAP_STATUS	18
+# endif
+# ifndef PROC_STACKGAP_DISABLE
+#  define PROC_STACKGAP_DISABLE	0x0002
+# endif
+#endif /* __FreeBSD__ */
 
 #define REG_FP 29
 
@@ -94,15 +103,35 @@ void os::initialize_thread(Thread *thr) {
 }
 
 address os::Bsd::ucontext_get_pc(ucontext_t * uc) {
-  return (address)uc->uc_mcontext.pc;
+#if defined(__FreeBSD__)
+  return (address)uc->uc_mcontext.mc_gpregs.gp_elr;
+#elif defined(__OpenBSD__)
+  return (address)uc->sc_elr;
+#endif
+}
+
+void os::Bsd::ucontext_set_pc(ucontext_t * uc, address pc) {
+#if defined(__FreeBSD__)
+  uc->uc_mcontext.mc_gpregs.gp_elr = (intptr_t)pc;
+#elif defined(__OpenBSD__)
+  uc->sc_elr = (unsigned long)pc;
+#endif
 }
 
 intptr_t* os::Bsd::ucontext_get_sp(ucontext_t * uc) {
-  return (intptr_t*)uc->uc_mcontext.sp;
+#if defined(__FreeBSD__)
+  return (intptr_t*)uc->uc_mcontext.mc_gpregs.gp_sp;
+#elif defined(__OpenBSD__)
+  return (intptr_t*)uc->sc_sp;
+#endif
 }
 
 intptr_t* os::Bsd::ucontext_get_fp(ucontext_t * uc) {
-  return (intptr_t*)uc->uc_mcontext.regs[REG_FP];
+#if defined(__FreeBSD__)
+  return (intptr_t*)uc->uc_mcontext.mc_gpregs.gp_x[REG_FP];
+#elif defined(__OpenBSD__)
+  return (intptr_t*)uc->sc_x[REG_FP];
+#endif
 }
 
 // For Forte Analyzer AsyncGetCallTrace profiling support - thread
@@ -252,7 +281,7 @@ JVM_handle_bsd_signal(int sig,
     pc = (address) os::Bsd::ucontext_get_pc(uc);
 
     if (StubRoutines::is_safefetch_fault(pc)) {
-      uc->uc_mcontext.pc = intptr_t(StubRoutines::continuation_for_safefetch_fault(pc));
+      os::Bsd::ucontext_set_pc(uc, StubRoutines::continuation_for_safefetch_fault(pc));
       return 1;
     }
 
@@ -269,6 +298,55 @@ JVM_handle_bsd_signal(int sig,
     // Handle ALL stack overflow variations here
     if (sig == SIGSEGV) {
       address addr = (address) info->si_addr;
+#ifdef __FreeBSD__
+      /*
+       * Determine whether the kernel stack guard pages have been disabled
+       */
+      int status = 0;
+      int ret = procctl(P_PID, getpid(), PROC_STACKGAP_STATUS, &status);
+
+      /*
+       * Check if the call to procctl(2) failed or the stack guard is not
+       * disabled.  Either way, we'll then attempt a workaround.
+       */
+      if (ret == -1 || !(status & PROC_STACKGAP_DISABLE)) {
+          /*
+           * Try to work around the problems caused on FreeBSD where the kernel
+           * may place guard pages above JVM guard pages and prevent the Java
+           * thread stacks growing into the JVM guard pages.  The work around
+           * is to determine how many such pages there may be and round down the
+           * fault address so that tests of whether it is in the JVM guard zone
+           * succeed.
+           *
+           * Note that this is a partial workaround at best since the normally
+           * the JVM could then unprotect the reserved area to allow a critical
+           * section to complete.  This is not possible if the kernel has
+           * placed guard pages below the reserved area.
+           *
+           * This also suffers from the problem that the
+           * security.bsd.stack_guard_page sysctl is dynamic and may have
+           * changed since the stack was allocated.  This is likely to be rare
+           * in practice though.
+           *
+           * What this does do is prevent the JVM crashing on FreeBSD and
+           * instead throwing a StackOverflowError when infinite recursion
+           * is attempted, which is the expected behaviour.  Due to it's
+           * limitations though, objects may be in unexpected states when
+           * this occurs.
+           *
+           * A better way to avoid these problems is either to be on a new
+           * enough version of FreeBSD (one that has PROC_STACKGAP_CTL) or set
+           * security.bsd.stack_guard_page to zero.
+           */
+          int guard_pages = 0;
+          size_t size = sizeof(guard_pages);
+          if (sysctlbyname("security.bsd.stack_guard_page",
+                           &guard_pages, &size, NULL, 0) == 0 &&
+              guard_pages > 0) {
+            addr -= guard_pages * os::vm_page_size();
+          }
+      }
+#endif
 
       // check if fault address is within thread stack
       if (addr < thread->stack_base() &&
@@ -294,21 +372,6 @@ JVM_handle_bsd_signal(int sig,
           // it as a hint.
           tty->print_raw_cr("Please check if any of your loaded .so files has "
                             "enabled executable stack (see man page execstack(8))");
-        } else {
-          // Accessing stack address below sp may cause SEGV if current
-          // thread has MAP_GROWSDOWN stack. This should only happen when
-          // current thread was created by user code with MAP_GROWSDOWN flag
-          // and then attached to VM. See notes in os_bsd.cpp.
-          if (thread->osthread()->expanding_stack() == 0) {
-             thread->osthread()->set_expanding_stack();
-             if (os::Bsd::manually_expand_stack(thread, addr)) {
-               thread->osthread()->clear_expanding_stack();
-               return 1;
-             }
-             thread->osthread()->clear_expanding_stack();
-          } else {
-             fatal("recursive segv. expanding stack.");
-          }
         }
       }
     }
@@ -382,7 +445,7 @@ JVM_handle_bsd_signal(int sig,
     // save all thread context in case we need to restore it
     if (thread != NULL) thread->set_saved_exception_pc(pc);
 
-    uc->uc_mcontext.pc = (__u64)stub;
+    os::Bsd::ucontext_set_pc(uc, stub);
     return true;
   }
 
@@ -414,13 +477,6 @@ JVM_handle_bsd_signal(int sig,
 }
 
 void os::Bsd::init_thread_fpu_state(void) {
-}
-
-int os::Bsd::get_fpu_control_word(void) {
-  return 0;
-}
-
-void os::Bsd::set_fpu_control_word(int fpu_control) {
 }
 
 // Check that the bsd kernel version is 2.4 or higher since earlier
@@ -488,32 +544,36 @@ size_t os::Bsd::default_guard_size(os::ThreadType thr_type) {
 //    pthread_attr_getstack()
 
 static void current_stack_region(address * bottom, size_t * size) {
-  if (os::is_primordial_thread()) {
-     // primordial thread needs special handling because pthread_getattr_np()
-     // may return bogus value.
-     *bottom = os::Bsd::initial_thread_stack_bottom();
-     *size   = os::Bsd::initial_thread_stack_size();
-  } else {
-     pthread_attr_t attr;
+#if defined(__OpenBSD__)
+  stack_t ss;
+  int rslt = pthread_stackseg_np(pthread_self(), &ss);
 
-     int rslt = pthread_getattr_np(pthread_self(), &attr);
+  if (rslt != 0)
+    fatal(err_msg("pthread_stackseg_np failed with err = %d", rslt));
 
-     // JVM needs to know exact stack location, abort if it fails
-     if (rslt != 0) {
-       if (rslt == ENOMEM) {
-         vm_exit_out_of_memory(0, OOM_MMAP_ERROR, "pthread_getattr_np");
-       } else {
-         fatal(err_msg("pthread_getattr_np failed with errno = %d", rslt));
-       }
-     }
+  *bottom = (address)((char *)ss.ss_sp - ss.ss_size);
+  *size   = ss.ss_size;
+#else
+  pthread_attr_t attr;
 
-     if (pthread_attr_getstack(&attr, (void **)bottom, size) != 0) {
-         fatal("Can not locate current stack attributes!");
-     }
+  int rslt = pthread_attr_init(&attr);
 
-     pthread_attr_destroy(&attr);
+  // JVM needs to know exact stack location, abort if it fails
+  if (rslt != 0)
+    fatal(err_msg("pthread_attr_init failed with err = %d", rslt));
 
+  rslt = pthread_attr_get_np(pthread_self(), &attr);
+
+  if (rslt != 0)
+    fatal(err_msg("pthread_attr_get_np failed with err = %d", rslt));
+
+  if (pthread_attr_getstackaddr(&attr, (void **)bottom) != 0 ||
+    pthread_attr_getstacksize(&attr, size) != 0) {
+    fatal("Can not locate current stack attributes!");
   }
+
+  pthread_attr_destroy(&attr);
+#endif
   assert(os::current_stack_pointer() >= *bottom &&
          os::current_stack_pointer() < *bottom + *size, "just checking");
 }
@@ -541,8 +601,14 @@ void os::print_context(outputStream *st, void *context) {
 
   ucontext_t *uc = (ucontext_t*)context;
   st->print_cr("Registers:");
-  for (int r = 0; r < 31; r++)
-          st->print_cr(  "R%d=" INTPTR_FORMAT, r, (int64_t)uc->uc_mcontext.regs[r]);
+  for (int r = 0; r < 30; r++) {
+    st->print("R%-2d=", r);
+#if defined(__FreeBSD__)
+    print_location(st, uc->uc_mcontext.mc_gpregs.gp_x[r]);
+#elif defined(__OpenBSD__)
+    print_location(st, uc->sc_x[r]);
+#endif
+  }
   st->cr();
 
   intptr_t *sp = (intptr_t *)os::Bsd::ucontext_get_sp(uc);
@@ -572,8 +638,12 @@ void os::print_register_info(outputStream *st, void *context) {
 
   // this is only for the "general purpose" registers
 
-  for (int r = 0; r < 31; r++)
-          st->print_cr(  "R%d=" INTPTR_FORMAT, r, (int64_t)uc->uc_mcontext.regs[r]);
+  for (int r = 0; r < 30; r++)
+#if defined(__FreeBSD__)
+    st->print_cr(  "R%d=" INTPTR_FORMAT, r, (uintptr_t)uc->uc_mcontext.mc_gpregs.gp_x[r]);
+#elif defined(__OpenBSD__)
+    st->print_cr(  "R%d=" INTPTR_FORMAT, r, (uintptr_t)uc->sc_x[r]);
+#endif
   st->cr();
 }
 
