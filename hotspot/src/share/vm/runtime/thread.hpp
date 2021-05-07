@@ -1728,6 +1728,9 @@ public:
 #ifdef TARGET_OS_ARCH_aix_ppc
 # include "thread_aix_ppc.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_bsd_aarch64
+# include "thread_bsd_aarch64.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_bsd_ppc
 # include "thread_bsd_ppc.hpp"
 #endif

@@ -66,6 +66,9 @@
 #endif
 
 // BSD
+#ifdef TARGET_OS_ARCH_bsd_aarch64
+# include "prefetch_bsd_aarch64.inline.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_bsd_ppc
 # include "prefetch_bsd_ppc.inline.hpp"
 #endif
