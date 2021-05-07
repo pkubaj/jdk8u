@@ -22,7 +22,7 @@
 //
 //
 
-// AMD64 Linux Architecture Description File
+// AMD64 Bsd Architecture Description File
 
 //----------OS-DEPENDENT ENCODING BLOCK----------------------------------------
 // This block specifies the encoding classes used by the compiler to

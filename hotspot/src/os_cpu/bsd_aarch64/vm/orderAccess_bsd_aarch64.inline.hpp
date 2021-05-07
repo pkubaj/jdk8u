@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef OS_CPU_LINUX_AARCH64_VM_ORDERACCESS_LINUX_AARCH64_INLINE_HPP
-#define OS_CPU_LINUX_AARCH64_VM_ORDERACCESS_LINUX_AARCH64_INLINE_HPP
+#ifndef OS_CPU_BSD_AARCH64_VM_ORDERACCESS_BSD_AARCH64_INLINE_HPP
+#define OS_CPU_BSD_AARCH64_VM_ORDERACCESS_BSD_AARCH64_INLINE_HPP
 
 #include "runtime/atomic.inline.hpp"
 #include "runtime/orderAccess.hpp"
@@ -141,4 +141,4 @@ inline void     OrderAccess::release_store_fence(volatile jdouble* p, jdouble v)
 inline void     OrderAccess::release_store_ptr_fence(volatile intptr_t* p, intptr_t v) { release_store_ptr(p, v); fence(); }
 inline void     OrderAccess::release_store_ptr_fence(volatile void*     p, void*    v) { release_store_ptr(p, v); fence(); }
 
-#endif // OS_CPU_LINUX_AARCH64_VM_ORDERACCESS_LINUX_AARCH64_INLINE_HPP
+#endif // OS_CPU_BSD_AARCH64_VM_ORDERACCESS_BSD_AARCH64_INLINE_HPP

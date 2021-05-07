@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef OS_CPU_LINUX_AARCH64_VM_OS_LINUX_AARCH64_HPP
-#define OS_CPU_LINUX_AARCH64_VM_OS_LINUX_AARCH64_HPP
+#ifndef OS_CPU_BSD_AARCH64_VM_OS_BSD_AARCH64_HPP
+#define OS_CPU_BSD_AARCH64_VM_OS_BSD_AARCH64_HPP
 
   static void setup_fpu();
   static bool supports_sse();
@@ -55,4 +55,4 @@
 #endif
   }
 
-#endif // OS_CPU_LINUX_AARCH64_VM_OS_LINUX_AARCH64_HPP
+#endif // OS_CPU_BSD_AARCH64_VM_OS_BSD_AARCH64_HPP

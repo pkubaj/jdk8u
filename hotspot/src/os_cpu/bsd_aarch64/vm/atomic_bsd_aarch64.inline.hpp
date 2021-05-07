@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef OS_CPU_LINUX_AARCH64_VM_ATOMIC_LINUX_AARCH64_INLINE_HPP
-#define OS_CPU_LINUX_AARCH64_VM_ATOMIC_LINUX_AARCH64_INLINE_HPP
+#ifndef OS_CPU_BSD_AARCH64_VM_ATOMIC_BSD_AARCH64_INLINE_HPP
+#define OS_CPU_BSD_AARCH64_VM_ATOMIC_BSD_AARCH64_INLINE_HPP
 
 #include "runtime/atomic.hpp"
 #include "runtime/os.hpp"
@@ -140,4 +140,4 @@ inline void* Atomic::cmpxchg_ptr(void* exchange_value, volatile void* dest, void
 
 inline jlong Atomic::load(volatile jlong* src) { return *src; }
 
-#endif // OS_CPU_LINUX_AARCH64_VM_ATOMIC_LINUX_AARCH64_INLINE_HPP
+#endif // OS_CPU_BSD_AARCH64_VM_ATOMIC_BSD_AARCH64_INLINE_HPP

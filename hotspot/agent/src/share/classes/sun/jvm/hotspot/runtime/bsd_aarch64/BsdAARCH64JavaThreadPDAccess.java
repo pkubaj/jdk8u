@@ -23,7 +23,7 @@
  *
  */
 
-package sun.jvm.hotspot.runtime.linux_aarch64;
+package sun.jvm.hotspot.runtime.bsd_aarch64;
 
 import java.io.*;
 import java.util.*;
@@ -34,7 +34,7 @@ import sun.jvm.hotspot.runtime.aarch64.*;
 import sun.jvm.hotspot.types.*;
 import sun.jvm.hotspot.utilities.*;
 
-public class LinuxAARCH64JavaThreadPDAccess implements JavaThreadPDAccess {
+public class BsdAARCH64JavaThreadPDAccess implements JavaThreadPDAccess {
   private static AddressField  lastJavaFPField;
   private static AddressField  osThreadField;
 
