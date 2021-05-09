@@ -140,6 +140,15 @@ ifneq (,$(findstring $(ARCH), ppc ppc64))
   HS_ARCH = ppc
 endif
 
+# AARCH64
+ifeq ($(ARCH), aarch64)
+  ARCH_DATA_MODEL  = 64
+  MAKE_ARGS        += LP64=1
+  PLATFORM         = bsd-aarch64
+  VM_PLATFORM      = bsd_aarch64
+  HS_ARCH          = aarch64
+endif
+
 # On 32 bit bsd we build server and client, on 64 bit just server.
 ifeq ($(JVM_VARIANTS),)
   ifeq ($(ARCH_DATA_MODEL), 32)
