@@ -377,6 +377,8 @@ ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
   endif
 endif
 
+ADD_SA_BINARIES/aarch64   = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
+                        $(EXPORT_LIB_DIR)/sa-jdi.jar
 ADD_SA_BINARIES/ppc   = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
                         $(EXPORT_LIB_DIR)/sa-jdi.jar
 ADD_SA_BINARIES/universal = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX) \
@@ -384,11 +386,13 @@ ADD_SA_BINARIES/universal = $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFI
 
 ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
   ifeq ($(ZIP_DEBUGINFO_FILES),1)
+      ADD_SA_BINARIES/aarch64 += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.diz
       ADD_SA_BINARIES/ppc += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.diz
   else
     ifeq ($(OS_VENDOR), Darwin)
         ADD_SA_BINARIES/ppc += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.$(LIBRARY_SUFFIX).dSYM
     else
+        ADD_SA_BINARIES/aarch64 += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.debuginfo
         ADD_SA_BINARIES/ppc += $(EXPORT_JRE_LIB_ARCH_DIR)/libsaproc.debuginfo
     endif
   endif
