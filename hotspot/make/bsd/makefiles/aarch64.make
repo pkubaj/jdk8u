@@ -38,3 +38,6 @@ CFLAGS += -DVM_LITTLE_ENDIAN
 # CFLAGS += -D_LP64=1
 
 OPT_CFLAGS/compactingPermGenGen.o = -O1
+
+PCH_FLAG/memnode.o = $(PCH_FLAG/NO_PCH)
+OPT_CFLAGS/memnode.o = -O0
