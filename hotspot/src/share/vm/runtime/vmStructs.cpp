@@ -152,6 +152,9 @@
 #ifdef TARGET_OS_ARCH_aix_ppc
 # include "vmStructs_aix_ppc.hpp"
 #endif
+#ifdef TARGET_OS_ARCH_bsd_aarch64
+# include "vmStructs_bsd_aarch64.hpp"
+#endif
 #ifdef TARGET_OS_ARCH_bsd_ppc
 # include "vmStructs_bsd_ppc.hpp"
 #endif
