@@ -285,7 +285,11 @@ void os::print_context(outputStream *st, void *context) {
                sp[I4->sp_offset_in_saved_window()],
                sp[I5->sp_offset_in_saved_window()],
                sp[I6->sp_offset_in_saved_window()],
+#ifdef STACKGHOST
+               sp[I7->sp_offset_in_saved_window()]^sg_cookie());
+#else
                sp[I7->sp_offset_in_saved_window()]);
+#endif
 
   st->print_cr(" PC=" INTPTR_FORMAT " nPC=" INTPTR_FORMAT,
                SIG_PC(sc),
@@ -357,7 +361,11 @@ void os::print_register_info(outputStream *st, void *context) {
   st->print("I4="); print_location(st, sp[I4->sp_offset_in_saved_window()]);
   st->print("I5="); print_location(st, sp[I5->sp_offset_in_saved_window()]);
   st->print("I6="); print_location(st, sp[I6->sp_offset_in_saved_window()]);
+#ifdef STACKGHOST
+  st->print("I7="); print_location(st, sp[I7->sp_offset_in_saved_window()]^sg_cookie());
+#else
   st->print("I7="); print_location(st, sp[I7->sp_offset_in_saved_window()]);
+#endif
   st->cr();
 }
 
