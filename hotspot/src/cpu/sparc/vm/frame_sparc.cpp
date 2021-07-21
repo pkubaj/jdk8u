@@ -176,7 +176,7 @@ void RegisterMap::shift_individual_registers() {
 
 address frame::sender_pc() const {
 #ifdef STACKGHOST
-  return (address)((intptr_t)(*I7_addr() + pc_return_offset) ^ sg_cookie());
+  return (address)((intptr_t)*I7_addr() ^ sg_cookie()) + pc_return_offset;
 #else
   return (*I7_addr() + pc_return_offset);
 #endif
