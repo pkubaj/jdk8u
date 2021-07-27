@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,25 +21,28 @@
  * questions.
  */
 
-import sun.misc.Unsafe;
-import java.lang.reflect.Field;
+import java.util.Arrays;
 
-@SuppressWarnings("sunapi")
-public class Test8001071 {
-    public static Unsafe unsafe;
+import javax.print.PrintServiceLookup;
 
-    static {
-        try {
-            Field f = Unsafe.class.getDeclaredField("theUnsafe");
-            f.setAccessible(true);
-            unsafe = (Unsafe) f.get(null);
-        } catch ( Exception e ) {
-            e.printStackTrace();
+/*
+ * @test
+ * @bug 8241829
+ */
+public final class PrintServicesSecurityManager {
+
+    public static void main(String[] args) throws InterruptedException {
+        System.setSecurityManager(new SecurityManager());
+        test();
+        Thread.sleep(3000); // to be sure the pooling thread started
+        test();
+    }
+
+    private static void test() {
+        Object[] services = PrintServiceLookup.lookupPrintServices(null, null);
+        if (services.length != 0) {
+            System.err.println("services = " + Arrays.toString(services));
+            throw new RuntimeException("The array of Services must be empty");
         }
     }
-
-    public static void main(String args[]) {
-        unsafe.getObject(new Test8001071(), Short.MAX_VALUE);
-    }
-
 }
