@@ -70,7 +70,8 @@ MacosxDebuggerLocal.o: MacosxDebuggerLocal.m
 	echo "OS="$(OS)
 	$(JAVAH) -jni -classpath ../../../build/classes  \
 		sun.jvm.hotspot.debugger.x86.X86ThreadContext \
-		sun.jvm.hotspot.debugger.amd64.AMD64ThreadContext
+		sun.jvm.hotspot.debugger.amd64.AMD64ThreadContext \
+		sun.jvm.hotspot.debugger.aarch64.AARCH64ThreadContext
 	$(GCC) $(CFLAGS) $(FOUNDATIONFLAGS) $<
 
 sadis.o: ../../share/native/sadis.c
@@ -84,6 +85,9 @@ sadis.o: ../../share/native/sadis.c
 ifndef LDNOMAP
   LFLAGS_LIBSA = -Xlinker --version-script=mapfile
 endif
+
+LDFLAGS_NO_EXEC_STACK="-Wl,-z,noexecstack"
+LFLAGS_LIBSA += $(LDFLAGS_NO_EXEC_STACK)
 
 $(LIBSA): $(OBJSPLUS) mapfile 
 	if [ ! -d $(ARCH) ] ; then mkdir $(ARCH) ; fi

@@ -73,7 +73,7 @@ class BsdFileSystem extends UnixFileSystem {
      * Returns object to iterate over mount entries
      */
     @Override
-    Iterable<UnixMountEntry> getMountEntries() {
+    List<UnixMountEntry> getMountEntries() {
         ArrayList<UnixMountEntry> entries = new ArrayList<UnixMountEntry>();
         try {
             long iter = BsdNativeDispatcher.getfsstat();

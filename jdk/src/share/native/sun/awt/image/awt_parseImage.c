@@ -624,7 +624,7 @@ awt_getBIColorOrder(int type, int *colorOrder) {
     switch(type) {
         case java_awt_image_BufferedImage_TYPE_INT_ARGB:
         case java_awt_image_BufferedImage_TYPE_INT_ARGB_PRE:
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
             colorOrder[0] = 2;
             colorOrder[1] = 1;
             colorOrder[2] = 0;
@@ -637,7 +637,7 @@ awt_getBIColorOrder(int type, int *colorOrder) {
 #endif
             break;
         case java_awt_image_BufferedImage_TYPE_INT_BGR:
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
             colorOrder[0] = 0;
             colorOrder[1] = 1;
             colorOrder[2] = 2;
@@ -648,7 +648,7 @@ awt_getBIColorOrder(int type, int *colorOrder) {
 #endif
             break;
         case java_awt_image_BufferedImage_TYPE_INT_RGB:
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
             colorOrder[0] = 2;
             colorOrder[1] = 1;
             colorOrder[2] = 0;

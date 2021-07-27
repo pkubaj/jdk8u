@@ -27,6 +27,7 @@
 #include <jni.h>
 #include "management.h"
 #include "sun_management_DiagnosticCommandImpl.h"
+#include <stdlib.h>
 
 JNIEXPORT void JNICALL Java_sun_management_DiagnosticCommandImpl_setNotificationEnabled
 (JNIEnv *env, jobject dummy, jboolean enabled) {

@@ -62,6 +62,23 @@ case "$OS" in
 	MAKE="make"
 	LD_LIBRARY_PATH="."
     ;;
+  *BSD )
+    NULL=/dev/null
+    PS=":"
+    FS="/"
+    ${TESTJAVA}${FS}bin${FS}java -version 2>&1 | grep '64-Bit' > $NULL
+    if [ $? -eq '0' ]
+    then
+        ARCH="amd64"
+    else
+        ARCH="i386"
+    fi
+    SYST="bsd"
+    MAKEFILE="Makefile.unix"
+    CC="cc"
+    MAKE="make"
+    LD_LIBRARY_PATH="."
+    ;;
   SunOS )
     NULL=/dev/null
     PS=":"
@@ -111,7 +128,7 @@ case "$OS" in
 	MAKE="make"
     ;;
   Darwin )
-    echo "Test passed. This test is not for MacOS."
+    echo "Test passed. This test is not for MacOS"
     exit 0;
     ;;
   * )

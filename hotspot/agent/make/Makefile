@@ -49,7 +49,9 @@ sun.jvm.hotspot.compiler \
 sun.jvm.hotspot.debugger \
 sun.jvm.hotspot.debugger.amd64 \
 sun.jvm.hotspot.debugger.bsd \
+sun.jvm.hotspot.debugger.bsd.aarch64 \
 sun.jvm.hotspot.debugger.bsd.amd64 \
+sun.jvm.hotspot.debugger.bsd.ppc64 \
 sun.jvm.hotspot.debugger.bsd.x86 \
 sun.jvm.hotspot.debugger.cdbg \
 sun.jvm.hotspot.debugger.cdbg.basic \
@@ -62,13 +64,17 @@ sun.jvm.hotspot.debugger.linux.aarch64 \
 sun.jvm.hotspot.debugger.linux.x86 \
 sun.jvm.hotspot.debugger.posix \
 sun.jvm.hotspot.debugger.posix.elf \
+sun.jvm.hotspot.debugger.ppc64 \
 sun.jvm.hotspot.debugger.proc \
+sun.jvm.hotspot.debugger.proc.aarch64 \
 sun.jvm.hotspot.debugger.proc.amd64 \
 sun.jvm.hotspot.debugger.proc.aarch64 \
+sun.jvm.hotspot.debugger.proc.ppc64 \
 sun.jvm.hotspot.debugger.proc.sparc \
 sun.jvm.hotspot.debugger.proc.x86 \
 sun.jvm.hotspot.debugger.remote \
 sun.jvm.hotspot.debugger.remote.amd64 \
+sun.jvm.hotspot.debugger.remote.ppc64 \
 sun.jvm.hotspot.debugger.remote.sparc \
 sun.jvm.hotspot.debugger.remote.x86 \
 sun.jvm.hotspot.debugger.sparc \
@@ -93,6 +99,7 @@ sun.jvm.hotspot.runtime.amd64 \
 sun.jvm.hotspot.runtime.aarch64 \
 sun.jvm.hotspot.runtime.bsd \
 sun.jvm.hotspot.runtime.bsd_amd64 \
+sun.jvm.hotspot.runtime.bsd_ppc64 \
 sun.jvm.hotspot.runtime.bsd_x86 \
 sun.jvm.hotspot.runtime.linux \
 sun.jvm.hotspot.runtime.linux_amd64 \
@@ -100,6 +107,7 @@ sun.jvm.hotspot.runtime.linux_aarch64 \
 sun.jvm.hotspot.runtime.linux_sparc \
 sun.jvm.hotspot.runtime.linux_x86 \
 sun.jvm.hotspot.runtime.posix \
+sun.jvm.hotspot.runtime.ppc64 \
 sun.jvm.hotspot.runtime.solaris_amd64 \
 sun.jvm.hotspot.runtime.solaris_sparc \
 sun.jvm.hotspot.runtime.solaris_x86 \
@@ -138,7 +146,9 @@ sun/jvm/hotspot/compiler/*.java \
 sun/jvm/hotspot/debugger/*.java \
 sun/jvm/hotspot/debugger/amd64/*.java \
 sun/jvm/hotspot/debugger/bsd/*.java \
+sun/jvm/hotspot/debugger/bsd/aarch64/*.java \
 sun/jvm/hotspot/debugger/bsd/amd64/*.java \
+sun/jvm/hotspot/debugger/bsd/ppc64/*.java \
 sun/jvm/hotspot/debugger/bsd/x86/*.java \
 sun/jvm/hotspot/debugger/cdbg/*.java \
 sun/jvm/hotspot/debugger/cdbg/basic/*.java \
@@ -150,13 +160,16 @@ sun/jvm/hotspot/debugger/linux/x86/*.java \
 sun/jvm/hotspot/debugger/linux/aarch64/*.java \
 sun/jvm/hotspot/debugger/posix/*.java \
 sun/jvm/hotspot/debugger/posix/elf/*.java \
+sun/jvm/hotspot/debugger/ppc64/*.java \
 sun/jvm/hotspot/debugger/proc/*.java \
 sun/jvm/hotspot/debugger/proc/amd64/*.java \
+sun/jvm/hotspot/debugger/proc/ppc64/*.java \
 sun/jvm/hotspot/debugger/proc/sparc/*.java \
 sun/jvm/hotspot/debugger/proc/x86/*.java \
 sun/jvm/hotspot/debugger/proc/aarch64/*.java \
 sun/jvm/hotspot/debugger/remote/*.java \
 sun/jvm/hotspot/debugger/remote/amd64/*.java \
+sun/jvm/hotspot/debugger/remote/ppc64/*.java \
 sun/jvm/hotspot/debugger/remote/sparc/*.java \
 sun/jvm/hotspot/debugger/remote/x86/*.java \
 sun/jvm/hotspot/debugger/sparc/*.java \
@@ -178,6 +191,7 @@ sun/jvm/hotspot/runtime/amd64/*.java \
 sun/jvm/hotspot/runtime/aarch64/*.java \
 sun/jvm/hotspot/runtime/bsd/*.java \
 sun/jvm/hotspot/runtime/bsd_amd64/*.java \
+sun/jvm/hotspot/runtime/bsd_ppc64/*.java \
 sun/jvm/hotspot/runtime/bsd_x86/*.java \
 sun/jvm/hotspot/runtime/linux/*.java \
 sun/jvm/hotspot/runtime/linux_amd64/*.java \
@@ -185,6 +199,7 @@ sun/jvm/hotspot/runtime/linux_aarch64/*.java \
 sun/jvm/hotspot/runtime/linux_sparc/*.java \
 sun/jvm/hotspot/runtime/linux_x86/*.java \
 sun/jvm/hotspot/runtime/posix/*.java \
+sun/jvm/hotspot/runtime/ppc64/*.java \
 sun/jvm/hotspot/runtime/solaris_amd64/*.java \
 sun/jvm/hotspot/runtime/solaris_sparc/*.java \
 sun/jvm/hotspot/runtime/solaris_x86/*.java \

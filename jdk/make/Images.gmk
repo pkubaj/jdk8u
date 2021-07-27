@@ -237,11 +237,11 @@ ifeq ($(PROFILE), )
 endif
 
 JDK_LIB_FILES := $(NOT_JRE_LIB_FILES)
-ifeq ($(OPENJDK_TARGET_OS), linux)
+ifneq ($(findstring $(OPENJDK_TARGET_OS), linux bsd),)
   JDK_LIB_FILES += jexec
 endif
 
-ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris),) # If Linux or Solaris
+ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris bsd),) # If Linux, Solaris, or BSD
     JDK_LIB_FILES += $(LIBRARY_PREFIX)jli$(SHARED_LIBRARY_SUFFIX) \
 		     $(LIBRARY_PREFIX)jawt$(SHARED_LIBRARY_SUFFIX)
 endif
@@ -392,7 +392,7 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
     MAN_SRC_DIR = $(MAN_SRC_BASEDIR)/solaris/doc
     MAN1_SUBDIR = sun/man/man1
   endif
-  ifeq ($(OPENJDK_TARGET_OS), macosx)
+  ifneq ($(findstring $(OPENJDK_TARGET_OS), bsd macosx),)
     MAN_SRC_DIR = $(MAN_SRC_BASEDIR)/bsd/doc
     MAN1_SUBDIR = man
   endif
@@ -448,7 +448,7 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
 	$(install-file)
   endif
 
-  ifeq ($(OPENJDK_TARGET_OS), linux)
+  ifneq ($(findstring $(OPENJDK_TARGET_OS), linux bsd macosx),)
     $(JRE_IMAGE_DIR)/man/ja:
 	$(ECHO) $(LOG_INFO) Creating $(patsubst $(OUTPUT_ROOT)/%,%,$@)
 	$(CD) $(@D) && $(RM) ja && $(LN) -s ja_JP.UTF-8 ja
@@ -456,19 +456,7 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
     $(JDK_IMAGE_DIR)/man/ja:
 	$(ECHO) $(LOG_INFO) Creating $(patsubst $(OUTPUT_ROOT)/%,%,$@)
 	$(CD) $(@D) && $(RM) ja && $(LN) -s ja_JP.UTF-8 ja
-  endif
 
-  ifeq ($(OPENJDK_TARGET_OS), macosx)
-    $(JRE_IMAGE_DIR)/man/ja:
-	$(ECHO) $(LOG_INFO) Creating $(patsubst $(OUTPUT_ROOT)/%,%,$@)
-	$(CD) $(@D) && $(RM) ja && $(LN) -s ja_JP.UTF-8 ja
-
-    $(JDK_IMAGE_DIR)/man/ja:
-	$(ECHO) $(LOG_INFO) Creating $(patsubst $(OUTPUT_ROOT)/%,%,$@)
-	$(CD) $(@D) && $(RM) ja && $(LN) -s ja_JP.UTF-8 ja
-  endif
-
-  ifeq ($(OPENJDK_TARGET_OS), linux)
     JRE_MAN_PAGE_LIST = $(addprefix $(JRE_IMAGE_DIR)/man/man1/, $(JRE_MAN_PAGES)) \
         $(addprefix $(JRE_IMAGE_DIR)/man/ja_JP.UTF-8/man1/, $(JRE_MAN_PAGES)) \
         $(JRE_IMAGE_DIR)/man/ja
@@ -488,16 +476,6 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
         $(addprefix $(JDK_IMAGE_DIR)/man/ja/man1/, $(JDK_MAN_PAGES)) \
         $(addprefix $(JDK_IMAGE_DIR)/man/ja_JP.UTF-8/man1/, $(JDK_MAN_PAGES)) \
         $(addprefix $(JDK_IMAGE_DIR)/man/ja_JP.PCK/man1/, $(JDK_MAN_PAGES))
-  endif
-
-  ifeq ($(OPENJDK_TARGET_OS), macosx)
-    JRE_MAN_PAGE_LIST = $(addprefix $(JRE_IMAGE_DIR)/man/man1/, $(JRE_MAN_PAGES)) \
-        $(addprefix $(JRE_IMAGE_DIR)/man/ja_JP.UTF-8/man1/, $(JRE_MAN_PAGES)) \
-        $(JRE_IMAGE_DIR)/man/ja
-
-    JDK_MAN_PAGE_LIST = $(addprefix $(JDK_IMAGE_DIR)/man/man1/, $(JDK_MAN_PAGES)) \
-        $(addprefix $(JDK_IMAGE_DIR)/man/ja_JP.UTF-8/man1/, $(JDK_MAN_PAGES)) \
-        $(JDK_IMAGE_DIR)/man/ja
   endif
 
 endif # Windows

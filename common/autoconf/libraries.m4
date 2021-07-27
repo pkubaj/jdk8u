@@ -71,9 +71,15 @@ AC_DEFUN_ONCE([LIB_SETUP_INIT],
   fi
 
   if test "x$OPENJDK_TARGET_OS" = xbsd; then
-    AC_MSG_CHECKING([what is not needed on bsd?])
-    ALSA_NOT_NEEDED=yes
-    AC_MSG_RESULT([alsa])
+    AC_MSG_CHECKING([what is not needed on BSD?])
+    if test "x$OPENJDK_TARGET_OS_VENDOR" = xopenbsd; then
+      ALSA_NOT_NEEDED=yes
+      PULSE_NOT_NEEDED=yes
+      AC_MSG_RESULT([alsa pulse])
+    else
+      PULSE_NOT_NEEDED=yes
+      AC_MSG_RESULT([pulse])
+    fi
   fi
 
   if test "x$OPENJDK" = "xfalse"; then
@@ -100,21 +106,25 @@ AC_DEFUN_ONCE([LIB_SETUP_X11],
   # Make a simple check for the libraries at the sysroot, and setup --x-includes and
   # --x-libraries for the sysroot, if that seems to be correct.
   if test "x$OPENJDK_TARGET_OS" = "xlinux"; then
-    if test "x$SYSROOT" != "x"; then
+    if test "x$SYS_ROOT" != "x/"; then
       if test "x$x_includes" = xNONE; then
-        if test -f "$SYSROOT/usr/X11R6/include/X11/Xlib.h"; then
-          x_includes="$SYSROOT/usr/X11R6/include"
-        elif test -f "$SYSROOT/usr/include/X11/Xlib.h"; then
-          x_includes="$SYSROOT/usr/include"
+        if test -f "$SYS_ROOT/usr/X11R7/include/X11/Xlib.h"; then
+          x_includes="$SYS_ROOT/usr/X11R7/include"
+        elif test -f "$SYS_ROOT/usr/X11R6/include/X11/Xlib.h"; then
+          x_includes="$SYS_ROOT/usr/X11R6/include"
+        elif test -f "$SYS_ROOT/usr/include/X11/Xlib.h"; then
+          x_includes="$SYS_ROOT/usr/include"
         fi
       fi
       if test "x$x_libraries" = xNONE; then
-        if test -f "$SYSROOT/usr/X11R6/lib/libX11.so"; then
-          x_libraries="$SYSROOT/usr/X11R6/lib"
-        elif test "$SYSROOT/usr/lib64/libX11.so" && test "x$OPENJDK_TARGET_CPU_BITS" = x64; then
-          x_libraries="$SYSROOT/usr/lib64"
-        elif test -f "$SYSROOT/usr/lib/libX11.so"; then
-          x_libraries="$SYSROOT/usr/lib"
+        if test -f "$SYS_ROOT/usr/X11R7/lib/libX11.so"; then
+          x_libraries="$SYS_ROOT/usr/X11R7/lib"
+        elif test -f "$SYS_ROOT/usr/X11R6/lib/libX11.so"; then
+          x_libraries="$SYS_ROOT/usr/X11R6/lib"
+        elif test "$SYS_ROOT/usr/lib64/libX11.so" && test "x$OPENJDK_TARGET_CPU_BITS" = x64; then
+          x_libraries="$SYS_ROOT/usr/lib64"
+        elif test -f "$SYS_ROOT/usr/lib/libX11.so"; then
+          x_libraries="$SYS_ROOT/usr/lib"
         fi
       fi
     fi
@@ -240,6 +250,10 @@ AC_DEFUN_ONCE([LIB_SETUP_CUPS],
         # A CSW package seems to be installed!
         CUPS_FOUND=yes
         CUPS_CFLAGS="-I$SYSROOT/opt/csw/include"
+      elif test -s ${PACKAGE_PATH}/include/cups/cups.h; then
+        # Standard package location for BSD
+        CUPS_FOUND=yes
+        CUPS_CFLAGS="-I${PACKAGE_PATH}/include"
       fi
       AC_MSG_RESULT([$CUPS_FOUND])
     fi
@@ -640,7 +654,7 @@ AC_DEFUN_ONCE([LIB_SETUP_ALSA],
 
   ###############################################################################
   #
-  # Check for alsa headers and libraries. Used on Linux/GNU systems.
+  # Check for alsa headers and libraries. Used on Linux/GNU and BSD systems.
   #
   AC_ARG_WITH(alsa, [AS_HELP_STRING([--with-alsa],
       [specify prefix directory for the alsa package
@@ -806,17 +820,61 @@ AC_DEFUN_ONCE([LIB_SETUP_MISC_LIBS],
 
   if test "x${with_giflib}" = "xbundled"; then
     USE_EXTERNAL_LIBGIF=false
+    GIFLIB_CFLAGS=
+    GIFLIB_LDFLAGS=
   elif test "x${with_giflib}" = "xsystem"; then
-    AC_CHECK_HEADER(gif_lib.h, [],
-        [ AC_MSG_ERROR([--with-giflib=system specified, but gif_lib.h not found!])])
-    AC_CHECK_LIB(gif, DGifGetCode, [],
-        [ AC_MSG_ERROR([--with-giflib=system specified, but no giflib found!])])
+    GIFLIB_H_FOUND=no
+    AC_CHECK_HEADER(gif_lib.h,
+        [
+           GIFLIB_H_FOUND=yes
+           GIFLIB_CFLAGS=
+        ]
+    )
+    if test "x$GIFLIB_H_FOUND" = xno; then
+      AC_MSG_CHECKING([for giflib headers])
+      if test -s ${PACKAGE_PATH}/include/gif_lib.h; then
+        # Standard package location for BSD
+        GIFLIB_H_FOUND=yes
+        GIFLIB_CFLAGS="-I${PACKAGE_PATH}/include"
+      fi
+      AC_MSG_RESULT([$GIFLIB_H_FOUND])
+    fi
+    if test "x$GIFLIB_H_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([giflib])
+      AC_MSG_ERROR([Could not find giflib headers! $HELP_MSG ])
+    fi
+
+    GIFLIB_LIB_FOUND=no
+    AC_CHECK_LIB(gif, DGifGetCode,
+        [
+           GIFLIB_LIB_FOUND=yes
+           GIFLIB_LDFLAGS=
+        ]
+    )
+    if test "x$GIFLIB_LIB_FOUND" = xno; then
+      save_LDFLAGS="$LDFLAGS"
+      LDFLAGS="$LDFLAGS -L${PACKAGE_PATH}/lib"
+      AC_CHECK_LIB(gif, DGifOpen,
+          [
+             GIFLIB_LIB_FOUND=yes
+             GIFLIB_LDFLAGS="-L${PACKAGE_PATH}/lib"
+          ]
+      )
+      LDFLAGS="$save_LDFLAGS"
+    fi
+
+    if test "x$GIFLIB_LIB_FOUND" = xno; then
+      HELP_MSG_MISSING_DEPENDENCY([giflib])
+      AC_MSG_ERROR([Could not find giflib library! $HELP_MSG ])
+    fi
 
     USE_EXTERNAL_LIBGIF=true
   else
     AC_MSG_ERROR([Invalid value of --with-giflib: ${with_giflib}, use 'system' or 'bundled'])
   fi
   AC_SUBST(USE_EXTERNAL_LIBGIF)
+  AC_SUBST(GIFLIB_CFLAGS)
+  AC_SUBST(GIFLIB_LDFLAGS)
 
   ###############################################################################
   #
@@ -1048,6 +1106,11 @@ AC_DEFUN_ONCE([LIB_SETUP_STATIC_LINK_LIBSTDCPP],
 
   # TODO better (platform agnostic) test
   if test "x$OPENJDK_TARGET_OS" = xmacosx && test "x$LIBCXX" = x && test "x$TOOLCHAIN_TYPE" = xgcc; then
+    LIBCXX="-lstdc++"
+  fi
+
+  # TODO better (platform agnostic) test
+  if test "x$OPENJDK_TARGET_OS" = xbsd && test "x$LIBCXX" = x && test "x$GCC" = xyes; then
     LIBCXX="-lstdc++"
   fi
 

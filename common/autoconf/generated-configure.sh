@@ -655,6 +655,8 @@ LIBDL
 LIBM
 LIBZIP_CAN_USE_MMAP
 USE_EXTERNAL_LIBZ
+GIFLIB_LDFLAGS
+GIFLIB_CFLAGS
 USE_EXTERNAL_LIBGIF
 USE_EXTERNAL_LIBJPEG
 FONTCONFIG_CFLAGS
@@ -846,6 +848,7 @@ JDK_MAJOR_VERSION
 USER_RELEASE_SUFFIX
 ENABLE_JFR
 COMPRESS_JARS
+BSD_STATIC_LIBJLI
 UNLIMITED_CRYPTO
 CACERTS_FILE
 TEST_IN_BUILD
@@ -923,6 +926,7 @@ OPENJDK_TARGET_CPU_ARCH
 OPENJDK_TARGET_CPU
 OPENJDK_TARGET_OS_ENV
 OPENJDK_TARGET_OS_API
+OPENJDK_TARGET_OS_VENDOR
 OPENJDK_TARGET_OS
 OPENJDK_BUILD_CPU_ENDIAN
 OPENJDK_BUILD_CPU_BITS
@@ -1060,6 +1064,7 @@ enable_headful
 enable_hotspot_test_in_build
 with_cacerts_file
 enable_unlimited_crypto
+enable_static_libjli
 enable_jfr
 with_milestone
 with_update_version
@@ -1069,6 +1074,7 @@ with_vendor_name
 with_vendor_url
 with_vendor_bug_url
 with_vendor_vm_bug_url
+with_company_name
 with_copyright_year
 with_boot_jdk
 with_boot_jdk_jvmargs
@@ -1085,6 +1091,7 @@ with_override_jdk
 with_import_hotspot
 with_toolchain_type
 with_toolchain_version
+with_package_path
 with_jtreg
 with_extra_cflags
 with_extra_cxxflags
@@ -1857,6 +1864,7 @@ Optional Features:
                           run the Queens test after Hotspot build [disabled]
   --enable-unlimited-crypto
                           Enable unlimited crypto policy [disabled]
+  --enable-static-libjli  Enable staticly linking libjli on bsd [disabled]
   --disable-jfr           Disable Java Flight Recorder support [enabled]
   --disable-debug-symbols disable generation of debug symbols [enabled]
   --disable-zip-debug-info
@@ -1925,6 +1933,7 @@ Optional Packages:
   --with-vendor-vm-bug-url
                           Sets the bug URL which will be displayed when the VM
                           crashes [not specified]
+  --with-company-name     Set company name.
   --with-copyright-year   Set copyright year value for build [current year]
   --with-boot-jdk         path to Boot JDK (used to bootstrap build) [probed]
   --with-boot-jdk-jvmargs specify JVM arguments to be passed to all
@@ -1960,6 +1969,8 @@ Optional Packages:
                           the version of the toolchain to look for, use
                           '--help' to show possible values [platform
                           dependent]
+  --with-package-path     package path to be used for location of third party
+                          packages
   --with-jtreg            Regression Test Harness [probed]
   --with-extra-cflags     extra flags to be used when compiling jdk c-files
   --with-extra-cxxflags   extra flags to be used when compiling jdk c++-files
@@ -2385,6 +2396,52 @@ fi
 
 } # ac_fn_objc_try_compile
 
+# ac_fn_cxx_try_link LINENO
+# -------------------------
+# Try to link conftest.$ac_ext, and return whether this succeeded.
+ac_fn_cxx_try_link ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  rm -f conftest.$ac_objext conftest$ac_exeext
+  if { { ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
+$as_echo "$ac_try_echo"; } >&5
+  (eval "$ac_link") 2>conftest.err
+  ac_status=$?
+  if test -s conftest.err; then
+    grep -v '^ *+' conftest.err >conftest.er1
+    cat conftest.er1 >&5
+    mv -f conftest.er1 conftest.err
+  fi
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; } && {
+	 test -z "$ac_cxx_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 test -x conftest$ac_exeext
+       }; then :
+  ac_retval=0
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_retval=1
+fi
+  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
+  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
+  # interfere with the next link command; also delete a directory that is
+  # left behind by Apple's compiler.  We do this before executing the actions.
+  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+  as_fn_set_status $ac_retval
+
+} # ac_fn_cxx_try_link
+
 # ac_fn_cxx_check_header_mongrel LINENO HEADER VAR INCLUDES
 # ---------------------------------------------------------
 # Tests whether HEADER exists, giving a warning if it cannot be compiled using
@@ -2731,52 +2788,6 @@ rm -f conftest.val
   as_fn_set_status $ac_retval
 
 } # ac_fn_cxx_compute_int
-
-# ac_fn_cxx_try_link LINENO
-# -------------------------
-# Try to link conftest.$ac_ext, and return whether this succeeded.
-ac_fn_cxx_try_link ()
-{
-  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
-  rm -f conftest.$ac_objext conftest$ac_exeext
-  if { { ac_try="$ac_link"
-case "(($ac_try" in
-  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
-  *) ac_try_echo=$ac_try;;
-esac
-eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
-$as_echo "$ac_try_echo"; } >&5
-  (eval "$ac_link") 2>conftest.err
-  ac_status=$?
-  if test -s conftest.err; then
-    grep -v '^ *+' conftest.err >conftest.er1
-    cat conftest.er1 >&5
-    mv -f conftest.er1 conftest.err
-  fi
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; } && {
-	 test -z "$ac_cxx_werror_flag" ||
-	 test ! -s conftest.err
-       } && test -s conftest$ac_exeext && {
-	 test "$cross_compiling" = yes ||
-	 test -x conftest$ac_exeext
-       }; then :
-  ac_retval=0
-else
-  $as_echo "$as_me: failed program was:" >&5
-sed 's/^/| /' conftest.$ac_ext >&5
-
-	ac_retval=1
-fi
-  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
-  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
-  # interfere with the next link command; also delete a directory that is
-  # left behind by Apple's compiler.  We do this before executing the actions.
-  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
-  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
-  as_fn_set_status $ac_retval
-
-} # ac_fn_cxx_try_link
 
 # ac_fn_cxx_check_func LINENO FUNC VAR
 # ------------------------------------
@@ -4178,6 +4189,7 @@ fi
 VALID_TOOLCHAINS_all="gcc clang solstudio xlc microsoft"
 
 # These toolchains are valid on different platforms
+VALID_TOOLCHAINS_bsd="clang gcc"
 VALID_TOOLCHAINS_linux="gcc clang"
 VALID_TOOLCHAINS_solaris="solstudio"
 VALID_TOOLCHAINS_macosx="gcc clang"
@@ -13628,11 +13640,27 @@ test -n "$target_alias" &&
       as_fn_error $? "unsupported operating system $build_os" "$LINENO" 5
       ;;
   esac
+  # The BSD's have slight differences so determine which one we are building on.
+  # For the rest set VAR_OS_VENDOR to VAR_OS
+  case "$build_os" in
+    *openbsd*)
+      VAR_OS_VENDOR=openbsd
+      ;;
+    *netbsd*)
+      VAR_OS_VENDOR=netbsd
+      ;;
+    *freebsd*)
+      VAR_OS_VENDOR=freebsd
+      ;;
+    *)
+      VAR_OS_VENDOR="$VAR_OS"
+      ;;
+  esac
 
 
   # First argument is the cpu name from the trip/quad
   case "$build_cpu" in
-    x86_64)
+    amd64|x86_64)
       VAR_CPU=x86_64
       VAR_CPU_ARCH=x86
       VAR_CPU_BITS=64
@@ -13766,11 +13794,27 @@ $as_echo "$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU" >&6; }
       as_fn_error $? "unsupported operating system $host_os" "$LINENO" 5
       ;;
   esac
+  # The BSD's have slight differences so determine which one we are building on.
+  # For the rest set VAR_OS_VENDOR to VAR_OS
+  case "$host_os" in
+    *openbsd*)
+      VAR_OS_VENDOR=openbsd
+      ;;
+    *netbsd*)
+      VAR_OS_VENDOR=netbsd
+      ;;
+    *freebsd*)
+      VAR_OS_VENDOR=freebsd
+      ;;
+    *)
+      VAR_OS_VENDOR="$VAR_OS"
+      ;;
+  esac
 
 
   # First argument is the cpu name from the trip/quad
   case "$host_cpu" in
-    x86_64)
+    amd64|x86_64)
       VAR_CPU=x86_64
       VAR_CPU_ARCH=x86
       VAR_CPU_BITS=64
@@ -13843,12 +13887,14 @@ $as_echo "$OPENJDK_BUILD_OS-$OPENJDK_BUILD_CPU" >&6; }
 
   # ... and setup our own variables. (Do this explicitely to facilitate searching)
   OPENJDK_TARGET_OS="$VAR_OS"
+  OPENJDK_TARGET_OS_VENDOR="$VAR_OS_VENDOR"
   OPENJDK_TARGET_OS_API="$VAR_OS_API"
   OPENJDK_TARGET_OS_ENV="$VAR_OS_ENV"
   OPENJDK_TARGET_CPU="$VAR_CPU"
   OPENJDK_TARGET_CPU_ARCH="$VAR_CPU_ARCH"
   OPENJDK_TARGET_CPU_BITS="$VAR_CPU_BITS"
   OPENJDK_TARGET_CPU_ENDIAN="$VAR_CPU_ENDIAN"
+
 
 
 
@@ -13985,8 +14031,8 @@ $as_echo "$COMPILE_TYPE" >&6; }
 
   # Setup OPENJDK_TARGET_CPU_OSARCH, which is used to set the os.arch Java system property
   OPENJDK_TARGET_CPU_OSARCH="$OPENJDK_TARGET_CPU"
-  if test "x$OPENJDK_TARGET_OS" = xlinux && test "x$OPENJDK_TARGET_CPU" = xx86; then
-    # On linux only, we replace x86 with i386.
+  if test "x$OPENJDK_TARGET_OS" = xbsd -o "x$OPENJDK_TARGET_OS" = xlinux && test "x$OPENJDK_TARGET_CPU" = xx86; then
+    # On Linux and BSD, we replace x86 with i386.
     OPENJDK_TARGET_CPU_OSARCH="i386"
   elif test "x$OPENJDK_TARGET_OS" != xmacosx && test "x$OPENJDK_TARGET_CPU" = xx86_64; then
     # On all platforms except macosx, we replace x86_64 with amd64.
@@ -14009,6 +14055,21 @@ $as_echo "$COMPILE_TYPE" >&6; }
     elif test "x$OPENJDK_TARGET_CPU_ARCH" = xx86; then
       OPENJDK_TARGET_CPU_JLI_CFLAGS="$OPENJDK_TARGET_CPU_JLI_CFLAGS -DLIBARCH32NAME='\"i386\"' -DLIBARCH64NAME='\"amd64\"'"
     fi
+  fi
+
+  # The company name, if any
+
+# Check whether --with-company-name was given.
+if test "${with_company_name+set}" = set; then :
+  withval=$with_company_name;
+fi
+
+  if test "x$with_company_name" = xyes; then
+    as_fn_error $? "--with-company-name must have a value" "$LINENO" 5
+  elif  ! [[ $with_company_name =~ ^[[:print:]]*$ ]] ; then
+    as_fn_error $? "--with-company-name contains non-printing characters: $with_company_name" "$LINENO" 5
+  elif test "x$with_company_name" != x; then
+    COMPANY_NAME="$with_company_name"
   fi
 
 
@@ -14628,7 +14689,7 @@ $as_echo "$with_jvm_variants" >&6; }
     INCLUDE_SA=false
   fi
   if test "x$VAR_CPU" = xppc64 -o "x$VAR_CPU" = xppc64le ; then
-    INCLUDE_SA=false
+    INCLUDE_SA=true
   fi
 
 
@@ -19798,6 +19859,24 @@ fi
     UNLIMITED_CRYPTO=true
   else
     UNLIMITED_CRYPTO=false
+  fi
+
+
+  ###############################################################################
+  #
+  # Enable or disable static linking of libjli on bsd only
+  #
+  # Check whether --enable-static-libjli was given.
+if test "${enable_static_libjli+set}" = set; then :
+  enableval=$enable_static_libjli;
+else
+  enable_static_libjli=no
+fi
+
+  if test "x$OPENJDK_TARGET_OS" = "xbsd" && test "x$enable_static_libjli" = "xyes"; then
+    BSD_STATIC_LIBJLI=bsd
+  else
+    BSD_STATIC_LIBJLI=
   fi
 
 
@@ -37499,7 +37578,7 @@ $as_echo "$as_me: Rewriting NM to \"$new_complete\"" >&6;}
 
   # objcopy is used for moving debug symbols to separate files when
   # full debug symbols are enabled.
-  if test "x$OPENJDK_TARGET_OS" = xsolaris || test "x$OPENJDK_TARGET_OS" = xlinux; then
+  if test "x$OPENJDK_TARGET_OS" = xsolaris || test "x$OPENJDK_TARGET_OS" = xlinux || test "x$OPENJDK_TARGET_OS" = xbsd ; then
 
 
   # Publish this variable in the help.
@@ -40175,10 +40254,66 @@ $as_echo "$as_me: Rewriting BUILD_LD to \"$new_complete\"" >&6;}
 
 
 
-  # The package path is used only on macosx?
-  # FIXME: clean this up, and/or move it elsewhere.
-  PACKAGE_PATH=/opt/local
 
+  # The package path is used only on macosx?
+
+# Check whether --with-package-path was given.
+if test "${with_package_path+set}" = set; then :
+  withval=$with_package_path;
+fi
+
+  PACKAGE_PATH="$with_package_path"
+  if test "x$PACKAGE_PATH" = x; then
+    if test "`uname -s`" = "Darwin"; then
+      PACKAGE_PATH=/opt/local
+    fi
+
+    if test "`uname -s`" = "FreeBSD"; then
+      PACKAGE_PATH=/usr/local
+    fi
+
+    if test "`uname -s`" = "NetBSD"; then
+      PACKAGE_PATH=/usr/pkg
+    fi
+
+    if test "`uname -s`" = "OpenBSD"; then
+      PACKAGE_PATH=/usr/local
+    fi
+  fi
+
+
+
+  # On OpenBSD check to see if ld requires -z wxneeded
+  if test "`uname -s`" = "OpenBSD"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ld requires -z wxneeded" >&5
+$as_echo_n "checking if ld requires -z wxneeded... " >&6; }
+    PUSHED_LDFLAGS="$LDFLAGS"
+    LDFLAGS="$LDFLAGS -Wl,-z,wxneeded"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+int main() { }
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+
+          if $READELF -l conftest$ac_exeext | $GREP OPENBSD_WXNEED > /dev/null; then
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+            LDFLAGS_JDK="${LDFLAGS_JDK} -Wl,-z,wxneeded"
+          else
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+          fi
+
+else
+
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+    LDFLAGS="$PUSHED_LDFLAGS"
+  fi
 
   # Check for extra potential brokenness.
   if test  "x$TOOLCHAIN_TYPE" = xmicrosoft; then
@@ -40713,7 +40848,6 @@ $as_echo "$tool_specified" >&6; }
 # FIXME: Currently we must test this after toolchain but before flags. Fix!
 
 # Now we can test some aspects on the target using configure macros.
-
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ANSI C header files" >&5
 $as_echo_n "checking for ANSI C header files... " >&6; }
@@ -41284,7 +41418,7 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
   # How to compile shared libraries.
   #
 
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     PICFLAG="-fPIC"
     PIEFLAG="-fPIE"
     C_FLAG_REORDER=''
@@ -41367,7 +41501,7 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
   # fi
 
   # Generate make dependency files
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     C_FLAG_DEPS="-MMD -MF"
   elif test "x$TOOLCHAIN_TYPE" = xsolstudio; then
     C_FLAG_DEPS="-xMMD -xMF"
@@ -41384,7 +41518,7 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
   # info flags for toolchains unless we know they work.
   # See JDK-8207057.
   ASFLAGS_DEBUG_SYMBOLS=""
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     if test "x$OPENJDK_TARGET_CPU_BITS" = "x64" && test "x$DEBUG_LEVEL" = "xfastdebug"; then
       CFLAGS_DEBUG_SYMBOLS="-g1"
       CXXFLAGS_DEBUG_SYMBOLS="-g1"
@@ -41435,7 +41569,7 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
   else
     # The remaining toolchains share opt flags between CC and CXX;
     # setup for C and duplicate afterwards.
-    if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
       if test "x$OPENJDK_TARGET_OS" = xmacosx; then
         # On MacOSX we optimize for size, something
         # we should do for all platforms?
@@ -41611,7 +41745,7 @@ fi
   FDLIBM_CFLAGS=""
   # Setup compiler/platform specific flags to CFLAGS_JDK,
   # CXXFLAGS_JDK and CCXXFLAGS_JDK (common to C and CXX?)
-  if test "x$TOOLCHAIN_TYPE" = xgcc; then
+  if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
     # these options are used for both C and C++ compiles
     CCXXFLAGS_JDK="$CCXXFLAGS $CCXXFLAGS_JDK -Wall -Wno-parentheses -Wextra -Wno-unused -Wno-unused-parameter -Wformat=2 \
         -pipe -fstack-protector -D_GNU_SOURCE -D_REENTRANT -D_LARGEFILE64_SOURCE"
@@ -42063,6 +42197,9 @@ $as_echo "$supports" >&6; }
     else
       CCXXFLAGS_JDK="$CCXXFLAGS_JDK -D_LITTLE_ENDIAN"
     fi
+    if test "x$OPENJDK_TARGET_OS" = xbsd; then
+      CCXXFLAGS_JDK="$CCXXFLAGS_JDK -DVM_LITTLE_ENDIAN"
+    fi
   else
     # Same goes for _BIG_ENDIAN. Do we really need to set *ENDIAN on Solaris if they
     # are defined in the system?
@@ -42070,6 +42207,9 @@ $as_echo "$supports" >&6; }
       CCXXFLAGS_JDK="$CCXXFLAGS_JDK -D_BIG_ENDIAN="
     else
       CCXXFLAGS_JDK="$CCXXFLAGS_JDK -D_BIG_ENDIAN"
+    fi
+    if test "x$OPENJDK_TARGET_OS" = xbsd; then
+      CCXXFLAGS_JDK="$CCXXFLAGS_JDK -DVM_BIG_ENDIAN"
     fi
   fi
   if test "x$OPENJDK_TARGET_CPU" = xppc64le; then
@@ -42176,7 +42316,7 @@ $as_echo "$supports" >&6; }
     fi
     LDFLAGS_JDKEXE="${LDFLAGS_JDK} /STACK:$LDFLAGS_STACK_SIZE"
   else
-    if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
       # If this is a --hash-style=gnu system, use --hash-style=both, why?
       # We have previously set HAS_GNU_HASH if this is the case
       if test -n "$HAS_GNU_HASH"; then
@@ -42226,7 +42366,7 @@ $as_echo "$supports" >&6; }
     if test "x$OPENJDK_TARGET_OS" = xlinux; then
       LDFLAGS_JDKEXE="$LDFLAGS_JDKEXE -Xlinker --allow-shlib-undefined"
     fi
-    if test "x$TOOLCHAIN_TYPE" = xgcc; then
+    if test "x$TOOLCHAIN_TYPE" = xgcc || test "x$TOOLCHAIN_TYPE" = xclang; then
       # Enabling pie on 32 bit builds prevents the JVM from allocating a continuous
       # java heap.
       if test "x$OPENJDK_TARGET_CPU_BITS" != "x32"; then
@@ -42721,11 +42861,18 @@ $as_echo "alsa pulse x11" >&6; }
   fi
 
   if test "x$OPENJDK_TARGET_OS" = xbsd; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking what is not needed on bsd?" >&5
-$as_echo_n "checking what is not needed on bsd?... " >&6; }
-    ALSA_NOT_NEEDED=yes
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: alsa" >&5
-$as_echo "alsa" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking what is not needed on BSD?" >&5
+$as_echo_n "checking what is not needed on BSD?... " >&6; }
+    if test "x$OPENJDK_TARGET_OS_VENDOR" = xopenbsd; then
+      ALSA_NOT_NEEDED=yes
+      PULSE_NOT_NEEDED=yes
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: alsa pulse" >&5
+$as_echo "alsa pulse" >&6; }
+    else
+      PULSE_NOT_NEEDED=yes
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: pulse" >&5
+$as_echo "pulse" >&6; }
+    fi
   fi
 
   if test "x$OPENJDK" = "xfalse"; then
@@ -42760,21 +42907,25 @@ $as_echo "$as_me: WARNING: Option --enable-macosx-runtime-support is deprecated 
   # Make a simple check for the libraries at the sysroot, and setup --x-includes and
   # --x-libraries for the sysroot, if that seems to be correct.
   if test "x$OPENJDK_TARGET_OS" = "xlinux"; then
-    if test "x$SYSROOT" != "x"; then
+    if test "x$SYS_ROOT" != "x/"; then
       if test "x$x_includes" = xNONE; then
-        if test -f "$SYSROOT/usr/X11R6/include/X11/Xlib.h"; then
-          x_includes="$SYSROOT/usr/X11R6/include"
-        elif test -f "$SYSROOT/usr/include/X11/Xlib.h"; then
-          x_includes="$SYSROOT/usr/include"
+        if test -f "$SYS_ROOT/usr/X11R7/include/X11/Xlib.h"; then
+          x_includes="$SYS_ROOT/usr/X11R7/include"
+        elif test -f "$SYS_ROOT/usr/X11R6/include/X11/Xlib.h"; then
+          x_includes="$SYS_ROOT/usr/X11R6/include"
+        elif test -f "$SYS_ROOT/usr/include/X11/Xlib.h"; then
+          x_includes="$SYS_ROOT/usr/include"
         fi
       fi
       if test "x$x_libraries" = xNONE; then
-        if test -f "$SYSROOT/usr/X11R6/lib/libX11.so"; then
-          x_libraries="$SYSROOT/usr/X11R6/lib"
-        elif test "$SYSROOT/usr/lib64/libX11.so" && test "x$OPENJDK_TARGET_CPU_BITS" = x64; then
-          x_libraries="$SYSROOT/usr/lib64"
-        elif test -f "$SYSROOT/usr/lib/libX11.so"; then
-          x_libraries="$SYSROOT/usr/lib"
+        if test -f "$SYS_ROOT/usr/X11R7/lib/libX11.so"; then
+          x_libraries="$SYS_ROOT/usr/X11R7/lib"
+        elif test -f "$SYS_ROOT/usr/X11R6/lib/libX11.so"; then
+          x_libraries="$SYS_ROOT/usr/X11R6/lib"
+        elif test "$SYS_ROOT/usr/lib64/libX11.so" && test "x$OPENJDK_TARGET_CPU_BITS" = x64; then
+          x_libraries="$SYS_ROOT/usr/lib64"
+        elif test -f "$SYS_ROOT/usr/lib/libX11.so"; then
+          x_libraries="$SYS_ROOT/usr/lib"
         fi
       fi
     fi
@@ -43821,6 +43972,10 @@ $as_echo_n "checking for cups headers... " >&6; }
         # A CSW package seems to be installed!
         CUPS_FOUND=yes
         CUPS_CFLAGS="-I$SYSROOT/opt/csw/include"
+      elif test -s ${PACKAGE_PATH}/include/cups/cups.h; then
+        # Standard package location for BSD
+        CUPS_FOUND=yes
+        CUPS_CFLAGS="-I${PACKAGE_PATH}/include"
       fi
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $CUPS_FOUND" >&5
 $as_echo "$CUPS_FOUND" >&6; }
@@ -47706,7 +47861,7 @@ $as_echo "$BUNDLE_FREETYPE" >&6; }
 
   ###############################################################################
   #
-  # Check for alsa headers and libraries. Used on Linux/GNU systems.
+  # Check for alsa headers and libraries. Used on Linux/GNU and BSD systems.
   #
 
 # Check whether --with-alsa was given.
@@ -48225,15 +48380,66 @@ $as_echo "${with_giflib}" >&6; }
 
   if test "x${with_giflib}" = "xbundled"; then
     USE_EXTERNAL_LIBGIF=false
+    GIFLIB_CFLAGS=
+    GIFLIB_LDFLAGS=
   elif test "x${with_giflib}" = "xsystem"; then
+    GIFLIB_H_FOUND=no
     ac_fn_cxx_check_header_mongrel "$LINENO" "gif_lib.h" "ac_cv_header_gif_lib_h" "$ac_includes_default"
 if test "x$ac_cv_header_gif_lib_h" = xyes; then :
 
-else
-   as_fn_error $? "--with-giflib=system specified, but gif_lib.h not found!" "$LINENO" 5
+           GIFLIB_H_FOUND=yes
+           GIFLIB_CFLAGS=
+
+
 fi
 
 
+    if test "x$GIFLIB_H_FOUND" = xno; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for giflib headers" >&5
+$as_echo_n "checking for giflib headers... " >&6; }
+      if test -s ${PACKAGE_PATH}/include/gif_lib.h; then
+        # Standard package location for BSD
+        GIFLIB_H_FOUND=yes
+        GIFLIB_CFLAGS="-I${PACKAGE_PATH}/include"
+      fi
+      { $as_echo "$as_me:${as_lineno-$LINENO}: result: $GIFLIB_H_FOUND" >&5
+$as_echo "$GIFLIB_H_FOUND" >&6; }
+    fi
+    if test "x$GIFLIB_H_FOUND" = xno; then
+
+  # Print a helpful message on how to acquire the necessary build dependency.
+  # giflib is the help tag: freetype, cups, pulse, alsa etc
+  MISSING_DEPENDENCY=giflib
+
+  if test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
+    cygwin_help $MISSING_DEPENDENCY
+  elif test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.msys"; then
+    msys_help $MISSING_DEPENDENCY
+  else
+    PKGHANDLER_COMMAND=
+
+    case $PKGHANDLER in
+      apt-get)
+        apt_help     $MISSING_DEPENDENCY ;;
+      yum)
+        yum_help     $MISSING_DEPENDENCY ;;
+      port)
+        port_help    $MISSING_DEPENDENCY ;;
+      pkgutil)
+        pkgutil_help $MISSING_DEPENDENCY ;;
+      pkgadd)
+        pkgadd_help  $MISSING_DEPENDENCY ;;
+    esac
+
+    if test "x$PKGHANDLER_COMMAND" != x; then
+      HELP_MSG="You might be able to fix this by running '$PKGHANDLER_COMMAND'."
+    fi
+  fi
+
+      as_fn_error $? "Could not find giflib headers! $HELP_MSG " "$LINENO" 5
+    fi
+
+    GIFLIB_LIB_FOUND=no
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DGifGetCode in -lgif" >&5
 $as_echo_n "checking for DGifGetCode in -lgif... " >&6; }
 if ${ac_cv_lib_gif_DGifGetCode+:} false; then :
@@ -48271,21 +48477,103 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_gif_DGifGetCode" >&5
 $as_echo "$ac_cv_lib_gif_DGifGetCode" >&6; }
 if test "x$ac_cv_lib_gif_DGifGetCode" = xyes; then :
-  cat >>confdefs.h <<_ACEOF
-#define HAVE_LIBGIF 1
-_ACEOF
 
-  LIBS="-lgif $LIBS"
+           GIFLIB_LIB_FOUND=yes
+           GIFLIB_LDFLAGS=
 
-else
-   as_fn_error $? "--with-giflib=system specified, but no giflib found!" "$LINENO" 5
+
 fi
 
+    if test "x$GIFLIB_LIB_FOUND" = xno; then
+      save_LDFLAGS="$LDFLAGS"
+      LDFLAGS="$LDFLAGS -L${PACKAGE_PATH}/lib"
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DGifOpen in -lgif" >&5
+$as_echo_n "checking for DGifOpen in -lgif... " >&6; }
+if ${ac_cv_lib_gif_DGifOpen+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-lgif  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char DGifOpen ();
+int
+main ()
+{
+return DGifOpen ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_cxx_try_link "$LINENO"; then :
+  ac_cv_lib_gif_DGifOpen=yes
+else
+  ac_cv_lib_gif_DGifOpen=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_gif_DGifOpen" >&5
+$as_echo "$ac_cv_lib_gif_DGifOpen" >&6; }
+if test "x$ac_cv_lib_gif_DGifOpen" = xyes; then :
+
+             GIFLIB_LIB_FOUND=yes
+             GIFLIB_LDFLAGS="-L${PACKAGE_PATH}/lib"
+
+
+fi
+
+      LDFLAGS="$save_LDFLAGS"
+    fi
+
+    if test "x$GIFLIB_LIB_FOUND" = xno; then
+
+  # Print a helpful message on how to acquire the necessary build dependency.
+  # giflib is the help tag: freetype, cups, pulse, alsa etc
+  MISSING_DEPENDENCY=giflib
+
+  if test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.cygwin"; then
+    cygwin_help $MISSING_DEPENDENCY
+  elif test "x$OPENJDK_BUILD_OS_ENV" = "xwindows.msys"; then
+    msys_help $MISSING_DEPENDENCY
+  else
+    PKGHANDLER_COMMAND=
+
+    case $PKGHANDLER in
+      apt-get)
+        apt_help     $MISSING_DEPENDENCY ;;
+      yum)
+        yum_help     $MISSING_DEPENDENCY ;;
+      port)
+        port_help    $MISSING_DEPENDENCY ;;
+      pkgutil)
+        pkgutil_help $MISSING_DEPENDENCY ;;
+      pkgadd)
+        pkgadd_help  $MISSING_DEPENDENCY ;;
+    esac
+
+    if test "x$PKGHANDLER_COMMAND" != x; then
+      HELP_MSG="You might be able to fix this by running '$PKGHANDLER_COMMAND'."
+    fi
+  fi
+
+      as_fn_error $? "Could not find giflib library! $HELP_MSG " "$LINENO" 5
+    fi
 
     USE_EXTERNAL_LIBGIF=true
   else
     as_fn_error $? "Invalid value of --with-giflib: ${with_giflib}, use 'system' or 'bundled'" "$LINENO" 5
   fi
+
+
 
 
   ###############################################################################
@@ -48852,6 +49140,11 @@ fi
 
   # TODO better (platform agnostic) test
   if test "x$OPENJDK_TARGET_OS" = xmacosx && test "x$LIBCXX" = x && test "x$TOOLCHAIN_TYPE" = xgcc; then
+    LIBCXX="-lstdc++"
+  fi
+
+  # TODO better (platform agnostic) test
+  if test "x$OPENJDK_TARGET_OS" = xbsd && test "x$LIBCXX" = x && test "x$GCC" = xyes; then
     LIBCXX="-lstdc++"
   fi
 
@@ -52063,6 +52356,10 @@ $as_echo_n "checking for number of cores... " >&6; }
     # Looks like a MacOSX system
     NUM_CORES=`/usr/sbin/system_profiler -detailLevel full SPHardwareDataType | grep 'Cores' | awk  '{print $5}'`
     FOUND_CORES=yes
+  elif test "x$OPENJDK_BUILD_OS" = xbsd && test "x$(uname -s | grep -o BSD)" = xBSD; then
+    # Looks like a BSD system
+    NUM_CORES=`/sbin/sysctl -n hw.ncpu`
+    FOUND_CORES=yes
   elif test "x$OPENJDK_BUILD_OS" = xaix ; then
     NUM_LCPU=`lparstat -m 2> /dev/null | $GREP -o "lcpu=[0-9]*" | $CUT -d "=" -f 2`
     if test -n "$NUM_LCPU"; then
@@ -52120,6 +52417,15 @@ $as_echo_n "checking for memory size... " >&6; }
     # Looks like a MacOSX system
     MEMORY_SIZE=`/usr/sbin/system_profiler -detailLevel full SPHardwareDataType | grep 'Memory' | awk  '{print $2}'`
     MEMORY_SIZE=`expr $MEMORY_SIZE \* 1024`
+    FOUND_MEM=yes
+  elif test "x$OPENJDK_BUILD_OS" = xbsd && test "x$(uname -s | grep -o OpenBSD)" = xOpenBSD; then
+    # Looks like an OpenBSD system
+    MEMORY_SIZE=`/sbin/sysctl -n hw.physmem | awk '{print int($NF / 1048576); }'`
+    FOUND_MEM=yes
+  elif test "x$OPENJDK_BUILD_OS" = xbsd && test "x$(uname -s | grep -o BSD)" = xBSD; then
+    # Looks like a BSD system
+    MEMORY_SIZE=`/sbin/sysctl -n hw.physmem`
+    MEMORY_SIZE=`expr $MEMORY_SIZE / 1024 / 1024`
     FOUND_MEM=yes
   elif test "x$OPENJDK_BUILD_OS" = xwindows; then
     # Windows, but without cygwin
@@ -52694,8 +53000,8 @@ $as_echo "$as_me: WARNING: --with-ccache-dir has no meaning when ccache is not e
     # precompiled headers.
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking if ccache supports precompiled headers" >&5
 $as_echo_n "checking if ccache supports precompiled headers... " >&6; }
-    HAS_GOOD_CCACHE=`($CCACHE --version | head -n 1 | grep -E 3.1.[456789]) 2> /dev/null`
-    if test "x$HAS_GOOD_CCACHE" = x; then
+    HAS_GOOD_CCACHE=`($CCACHE --version | head -n 1 | awk '{ split($3, a, "."); if (a[1] >= 3 && (a[2] > 1 || (a[2] == 1 && a[3] >= 4))) print "yes"; else print "no"; }') 2> /dev/null`
+    if test "x$HAS_GOOD_CCACHE" != xyes; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no, disabling ccache" >&5
 $as_echo "no, disabling ccache" >&6; }
       CCACHE=

@@ -159,7 +159,7 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JVM_VARIANTS],
     INCLUDE_SA=false
   fi
   if test "x$VAR_CPU" = xppc64 -o "x$VAR_CPU" = xppc64le ; then
-    INCLUDE_SA=false
+    INCLUDE_SA=true
   fi
   AC_SUBST(INCLUDE_SA)
 
@@ -405,6 +405,20 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JDK_OPTIONS],
 
   ###############################################################################
   #
+  # Enable or disable static linking of libjli on bsd only
+  #
+  AC_ARG_ENABLE(static-libjli, [AS_HELP_STRING([--enable-static-libjli],
+      [Enable staticly linking libjli on bsd @<:@disabled@:>@])],,
+      [enable_static_libjli=no])
+  if test "x$OPENJDK_TARGET_OS" = "xbsd" && test "x$enable_static_libjli" = "xyes"; then
+    BSD_STATIC_LIBJLI=bsd
+  else
+    BSD_STATIC_LIBJLI=
+  fi
+  AC_SUBST(BSD_STATIC_LIBJLI)
+
+  ###############################################################################
+  #
   # Enable or disable the elliptic curve crypto implementation
   #
   AC_DEFUN_ONCE([JDKOPT_DETECT_INTREE_EC],
@@ -552,7 +566,6 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JDK_VERSION_NUMBERS],
     # Otherwise we will use the value from "version-numbers" included above.
     COMPANY_NAME="$with_vendor_name"
   fi
-  AC_SUBST(COMPANY_NAME)
 
   # The vendor URL, if any
   AC_ARG_WITH(vendor-url, [AS_HELP_STRING([--with-vendor-url],
@@ -589,6 +602,18 @@ AC_DEFUN_ONCE([JDKOPT_SETUP_JDK_VERSION_NUMBERS],
     VENDOR_URL_VM_BUG="$with_vendor_vm_bug_url"
   fi
   AC_SUBST(VENDOR_URL_VM_BUG)
+
+  # The company name, if any
+  AC_ARG_WITH(company-name, [AS_HELP_STRING([--with-company-name],
+      [Set company name.])])
+  if test "x$with_company_name" = xyes; then
+    AC_MSG_ERROR([--with-company-name must have a value])
+  elif [ ! [[ $with_company_name =~ ^[[:print:]]*$ ]] ]; then
+    AC_MSG_ERROR([--with-company-name contains non-printing characters: $with_company_name])
+  elif test "x$with_company_name" != x; then
+    COMPANY_NAME="$with_company_name"
+  fi
+  AC_SUBST(COMPANY_NAME)
 
   AC_ARG_WITH(copyright-year, [AS_HELP_STRING([--with-copyright-year],
       [Set copyright year value for build @<:@current year@:>@])])

@@ -21,7 +21,16 @@
 # questions.
 #  
 
+OS_VENDOR = $(shell uname -s)
+
+ifeq ($(OS_VENDOR), OpenBSD)
+SYSDEFS+= -DSTACKGHOST
+endif
+
 # gcc 4.0 miscompiles this code in -m64
 OPT_CFLAGS/macro.o = -O0
+
+# Avoid ICE with gcc 4.2.1
+OPT_CFLAGS/mulnode.o = -O0
 
 CFLAGS += -D_LP64=1

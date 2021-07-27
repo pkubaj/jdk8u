@@ -35,6 +35,16 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/types.h>
+#ifdef __FreeBSD__
+#include <sys/sysctl.h>
+#include <sys/procctl.h>
+#ifndef PROC_STACKGAP_DISABLE
+#define PROC_STACKGAP_DISABLE	0x0002
+#endif
+#ifndef PROC_STACKGAP_CTL
+#define PROC_STACKGAP_CTL	17
+#endif
+#endif /* __FreeBSD__ */
 #include "manifest_info.h"
 #include "version_comp.h"
 
@@ -307,9 +317,9 @@ RequiresSetenv(int wanted, const char *jvmpath) {
     if (llp == NULL && dmllp == NULL) {
         return JNI_FALSE;
     }
-#ifdef __linux
+#ifndef __solaris__
     /*
-     * On linux, if a binary is running as sgid or suid, glibc sets
+     * On linux and BSD, if a binary is running as sgid or suid, glibc/libc sets
      * LD_LIBRARY_PATH to the empty string for security purposes. (In contrast,
      * on Solaris the LD_LIBRARY_PATH variable for a privileged binary does not
      * lose its settings; but the dynamic linker does apply more scrutiny to the
@@ -320,12 +330,18 @@ RequiresSetenv(int wanted, const char *jvmpath) {
      * libraries will be handled by the RPATH. In reality, this check is
      * redundant, as the previous check for a non-null LD_LIBRARY_PATH will
      * return back to the calling function forthwith, it is left here to safe
-     * guard against any changes, in the glibc's existing security policy.
+     * guard against any changes, in the glibc/libc's existing security policy.
      */
+#ifndef _ALLBSD_SOURCE
     if ((getgid() != getegid()) || (getuid() != geteuid())) {
         return JNI_FALSE;
     }
-#endif /* __linux */
+#else
+    if (issetugid()) {
+        return JNI_FALSE;
+    }
+#endif /* ! _ALLBSD_SOURCE */
+#endif /* ! __solaris__ */
 
     /*
      * Prevent recursions. Since LD_LIBRARY_PATH is the one which will be set by
@@ -930,8 +946,9 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
  * onwards the filename returned in DL_info structure from dladdr is
  * an absolute pathname so technically realpath isn't required.
  * On Linux we read the executable name from /proc/self/exe.
- * As a fallback, and for platforms other than Solaris and Linux,
- * we use FindExecName to compute the executable name.
+ * On FreeBSD, we get the executable name via sysctl(3).
+ * As a fallback, and for platforms other than Solaris, Linux, and
+ * FreeBSD, we use FindExecName to compute the executable name.
  */
 const char*
 SetExecname(char **argv)
@@ -968,7 +985,17 @@ SetExecname(char **argv)
             exec_path = JLI_StringDup(buf);
         }
     }
-#else /* !__solaris__ && !__linux__ */
+#elif defined(__FreeBSD__)
+    {
+        char buf[PATH_MAX+1];
+        int name[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+        size_t len = sizeof(buf);
+        if (sysctl(name, 4, buf, &len, NULL, 0) == 0 && len > 0) {
+            buf[len] = '\0';
+            exec_path = JLI_StringDup(buf);
+        }
+    }
+#else /* !__solaris__ && !__linux__ && !__FreeBSD__ */
     {
         /* Not implemented */
     }
@@ -1074,13 +1101,13 @@ ContinueInNewThread0(int (JNICALL *continuation)(void *), jlong stack_size, void
 #define MAX_PID_STR_SZ   20
 
 void SetJavaLauncherPlatformProps() {
-   /* Linux only */
-#ifdef __linux__
+   /* Linux and BSD only */
+#ifndef __solaris__
     const char *substr = "-Dsun.java.launcher.pid=";
     char *pid_prop_str = (char *)JLI_MemAlloc(JLI_StrLen(substr) + MAX_PID_STR_SZ + 1);
     sprintf(pid_prop_str, "%s%d", substr, getpid());
     AddOption(pid_prop_str, NULL);
-#endif /* __linux__ */
+#endif /* ! __solaris__ */
 }
 
 int
@@ -1088,6 +1115,18 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int argc, char **argv,
         int mode, char *what, int ret)
 {
+#ifdef __FreeBSD__
+    /*
+     * Kernel stack guard pages interfere with the JVM's guard pages on the
+     * thread stacks and prevent correct stack overflow detection and the
+     * use of reserved pages to allow critical sections to complete.
+     *
+     * Attempt to disable the kernel stack guard pages here before any threads
+     * are created.
+     */
+    int arg = PROC_STACKGAP_DISABLE;
+    procctl(P_PID, getpid(), PROC_STACKGAP_CTL, &arg);
+#endif
     ShowSplashScreen();
     return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
 }

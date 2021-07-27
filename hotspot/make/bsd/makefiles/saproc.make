@@ -98,11 +98,16 @@ ifeq ($(DEBUG_BINARIES), true)
   SA_DEBUG_CFLAGS = -g
 endif
 
+# Optimize saproc lib at level -O3 unless it's a slowdebug build
+ifneq ($(BUILD_FLAVOR), debug)
+  SA_OPT_FLAGS = $(OPT_CFLAGS)
+endif
+
 # if $(AGENT_DIR) does not exist, we don't build SA
-# also, we don't build SA on Itanium, PPC, ARM or zero.
+# also, we don't build SA on Itanium, ARM or zero.
 
 ifneq ($(wildcard $(AGENT_DIR)),)
-ifneq ($(filter-out ia64 arm ppc zero,$(SRCARCH)),)
+ifneq ($(filter-out ia64 arm zero,$(SRCARCH)),)
   BUILDLIBSAPROC = $(LIBSAPROC)
 endif
 endif
@@ -134,6 +139,7 @@ $(LIBSAPROC): $(SASRCFILES) $(SAMAPFILE)
 	           $(SASRCFILES)                                        \
 	           $(SA_LFLAGS)                                         \
 	           $(SA_DEBUG_CFLAGS)                                   \
+	           $(SA_OPT_FLAGS)                                      \
 	           -o $@                                                \
 	           $(SALIBS)
 ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
@@ -162,16 +168,17 @@ ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
 endif
 
 install_saproc: $(BUILDLIBSAPROC)
-	@echo "Copying $(LIBSAPROC) to $(DEST_SAPROC)"
+	$(QUIETLY) if [ -e $(LIBSAPROC) ] ; then             \
+	  echo "Copying $(LIBSAPROC) to $(DEST_SAPROC)";     \
 ifeq ($(OS_VENDOR), Darwin)
-	$(QUIETLY) test -d $(LIBSAPROC_DEBUGINFO) && \
-	    cp -f -r $(LIBSAPROC_DEBUGINFO) $(DEST_SAPROC_DEBUGINFO)
+	$test -d $(LIBSAPROC_DEBUGINFO) && 			\
+	    cp -f -r $(LIBSAPROC_DEBUGINFO) $(DEST_SAPROC_DEBUGINFO); \
 else
-	$(QUIETLY) test -f $(LIBSAPROC_DEBUGINFO) && \
-	    cp -f $(LIBSAPROC_DEBUGINFO) $(DEST_SAPROC_DEBUGINFO)
+	 test -f $(LIBSAPROC_DEBUGINFO) && 		\
+	    cp -f $(LIBSAPROC_DEBUGINFO) $(DEST_SAPROC_DEBUGINFO);   \
 endif
-	$(QUIETLY) test -f $(LIBSAPROC_DIZ) && \
-	    cp -f $(LIBSAPROC_DIZ) $(DEST_SAPROC_DIZ)
-	$(QUIETLY) cp -f $(LIBSAPROC) $(DEST_SAPROC) && echo "Done"
+	 test -f $(LIBSAPROC_DIZ) && 				\
+	    cp -f $(LIBSAPROC_DIZ) $(DEST_SAPROC_DIZ); \
+	 cp -f $(LIBSAPROC) $(DEST_SAPROC) && echo "Done"
 
 .PHONY: install_saproc

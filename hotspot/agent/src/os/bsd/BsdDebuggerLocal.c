@@ -42,6 +42,14 @@
 #include "sun_jvm_hotspot_debugger_sparc_SPARCThreadContext.h"
 #endif
 
+#ifdef aarch64
+#include "sun_jvm_hotspot_debugger_aarch64_AARCH64ThreadContext.h"
+#endif
+
+#ifdef ppc64
+#include "sun_jvm_hotspot_debugger_ppc64_PPC64ThreadContext.h"
+#endif
+
 static jfieldID p_ps_prochandle_ID = 0;
 static jfieldID threadList_ID = 0;
 static jfieldID loadObjectList_ID = 0;
@@ -163,9 +171,12 @@ static void fillThreadsAndLoadObjects(JNIEnv* env, jobject this_obj, struct ps_p
 JNIEXPORT void JNICALL Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_attach0__I
   (JNIEnv *env, jobject this_obj, jint jpid) {
 
+  char err_buf[200];
   struct ps_prochandle* ph;
-  if ( (ph = Pgrab(jpid)) == NULL) {
-    THROW_NEW_DEBUGGER_EXCEPTION("Can't attach to the process");
+  if ( (ph = Pgrab(jpid, err_buf, sizeof(err_buf))) == NULL) {
+    char msg[230];
+    snprintf(msg, sizeof(msg), "Can't attach to the process: %s", err_buf);
+    THROW_NEW_DEBUGGER_EXCEPTION(msg);
   }
   (*env)->SetLongField(env, this_obj, p_ps_prochandle_ID, (jlong)(intptr_t)ph);
   fillThreadsAndLoadObjects(env, this_obj, ph);
@@ -304,8 +315,14 @@ JNIEXPORT jlongArray JNICALL Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_
 #ifdef amd64
 #define NPRGREG sun_jvm_hotspot_debugger_amd64_AMD64ThreadContext_NPRGREG
 #endif
+#ifdef aarch64
+#define NPRGREG sun_jvm_hotspot_debugger_aarch64_AARCH64ThreadContext_NPRGREG
+#endif
 #if defined(sparc) || defined(sparcv9)
 #define NPRGREG sun_jvm_hotspot_debugger_sparc_SPARCThreadContext_NPRGREG
+#endif
+#ifdef ppc64
+#define NPRGREG sun_jvm_hotspot_debugger_ppc64_PPC64ThreadContext_NPRGREG
 #endif
 
   array = (*env)->NewLongArray(env, NPRGREG);
@@ -407,6 +424,59 @@ JNIEXPORT jlongArray JNICALL Java_sun_jvm_hotspot_debugger_bsd_BsdDebuggerLocal_
   regs[REG_INDEX(R_O7)]  = gregs.u_regs[14];
 #endif /* sparc */
 
+#if defined(ppc64) || defined(ppc64le)
+#define REG_INDEX(reg) sun_jvm_hotspot_debugger_ppc64_PPC64ThreadContext_##reg
+
+  regs[REG_INDEX(LR)] = gregs.lr;
+  regs[REG_INDEX(PC)] = gregs.pc;
+  regs[REG_INDEX(R0)]  = gregs.fixreg[0];
+  regs[REG_INDEX(R1)]  = gregs.fixreg[1];
+  regs[REG_INDEX(R2)]  = gregs.fixreg[2];
+  regs[REG_INDEX(R3)]  = gregs.fixreg[3];
+  regs[REG_INDEX(R4)]  = gregs.fixreg[4];
+  regs[REG_INDEX(R5)]  = gregs.fixreg[5];
+  regs[REG_INDEX(R6)]  = gregs.fixreg[6];
+  regs[REG_INDEX(R7)]  = gregs.fixreg[7];
+  regs[REG_INDEX(R8)]  = gregs.fixreg[8];
+  regs[REG_INDEX(R9)]  = gregs.fixreg[9];
+  regs[REG_INDEX(R10)] = gregs.fixreg[10];
+  regs[REG_INDEX(R11)] = gregs.fixreg[11];
+  regs[REG_INDEX(R12)] = gregs.fixreg[12];
+  regs[REG_INDEX(R13)] = gregs.fixreg[13];
+  regs[REG_INDEX(R14)] = gregs.fixreg[14];
+  regs[REG_INDEX(R15)] = gregs.fixreg[15];
+  regs[REG_INDEX(R16)] = gregs.fixreg[16];
+  regs[REG_INDEX(R17)] = gregs.fixreg[17];
+  regs[REG_INDEX(R18)] = gregs.fixreg[18];
+  regs[REG_INDEX(R19)] = gregs.fixreg[19];
+  regs[REG_INDEX(R20)] = gregs.fixreg[20];
+  regs[REG_INDEX(R21)] = gregs.fixreg[21];
+  regs[REG_INDEX(R22)] = gregs.fixreg[22];
+  regs[REG_INDEX(R23)] = gregs.fixreg[23];
+  regs[REG_INDEX(R24)] = gregs.fixreg[24];
+  regs[REG_INDEX(R25)] = gregs.fixreg[25];
+  regs[REG_INDEX(R26)] = gregs.fixreg[26];
+  regs[REG_INDEX(R27)] = gregs.fixreg[27];
+  regs[REG_INDEX(R28)] = gregs.fixreg[28];
+  regs[REG_INDEX(R29)] = gregs.fixreg[29];
+  regs[REG_INDEX(R30)] = gregs.fixreg[30];
+  regs[REG_INDEX(R31)] = gregs.fixreg[31];
+
+#endif
+
+#if defined(aarch64)
+
+#define REG_INDEX(reg) sun_jvm_hotspot_debugger_aarch64_AARCH64ThreadContext_##reg
+
+  {
+    int i;
+    for (i = 0; i < 31; i++)
+      regs[i] = gregs.x[i];
+    regs[REG_INDEX(SP)] = gregs.sp;
+    regs[REG_INDEX(PC)] = gregs.elr;
+  }
+#endif /* aarch64 */
+ 
 
   (*env)->ReleaseLongArrayElements(env, array, regs, JNI_COMMIT);
   return array;

@@ -111,7 +111,7 @@ static int ParseLocale(JNIEnv* env, int cat, char ** std_language, char ** std_s
     lc = setlocale(cat, NULL);
 #endif
 
-#ifndef __linux__
+#if !defined(__linux__) && !defined(__FreeBSD__)
     if (lc == NULL) {
         return 0;
     }
@@ -431,6 +431,10 @@ GetJavaProperties(JNIEnv *env)
     sprops.awt_toolkit = "sun.awt.X11.XToolkit";
 #endif
 
+#ifdef __OpenBSD__
+    sprops.java_net_preferIPv4Stack = "true";
+#endif
+
     /* This is used only for debugging of font problems. */
     v = getenv("JAVA2D_FONTPATH");
     sprops.font_dir = v ? v : NULL;
@@ -528,23 +532,11 @@ GetJavaProperties(JNIEnv *env)
     sprops.sun_jnu_encoding = sprops.encoding;
 #endif
 
-#ifdef _ALLBSD_SOURCE
-#if BYTE_ORDER == _LITTLE_ENDIAN
-     sprops.unicode_encoding = "UnicodeLittle";
- #else
-     sprops.unicode_encoding = "UnicodeBig";
- #endif
-#else /* !_ALLBSD_SOURCE */
-#ifdef __linux__
-#if __BYTE_ORDER == __LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
     sprops.unicode_encoding = "UnicodeLittle";
 #else
     sprops.unicode_encoding = "UnicodeBig";
 #endif
-#else
-    sprops.unicode_encoding = "UnicodeBig";
-#endif
-#endif /* _ALLBSD_SOURCE */
 
     /* user properties */
     {

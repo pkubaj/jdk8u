@@ -61,7 +61,7 @@ class BsdThread implements ThreadProxy {
     }
 
     public String toString() {
-        return Integer.toString(thread_id);
+        return Integer.toString(thread_id) + "/" + Long.toString(unique_thread_id);
     }
 
     public ThreadContext getContext() throws IllegalThreadStateException {

@@ -148,6 +148,9 @@ public class DestroyTest {
         } else if (osName.startsWith("Linux") == true) {
             return new UnixTest(
                 File.createTempFile("ProcessTrap-", ".sh",null));
+        } else if (osName.endsWith("BSD")) {
+            return new UnixTest(
+                File.createTempFile("ProcessTrap-", ".sh",null));
         } else if (osName.startsWith("Mac OS")) {
             return new MacTest(
                 File.createTempFile("ProcessTrap-", ".sh",null));

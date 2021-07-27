@@ -25,10 +25,14 @@
 
 package sun.nio.fs;
 
+import java.nio.file.*;
+import java.nio.file.spi.FileTypeDetector;
 import java.io.IOException;
+import java.security.AccessController;
+import sun.security.action.GetPropertyAction;
 
 /**
- * Bsd implementation of FileSystemProvider
+ * BSD implementation of FileSystemProvider
  */
 
 public class BsdFileSystemProvider extends UnixFileSystemProvider {
@@ -44,5 +48,17 @@ public class BsdFileSystemProvider extends UnixFileSystemProvider {
     @Override
     BsdFileStore getFileStore(UnixPath path) throws IOException {
         return new BsdFileStore(path);
+    }
+
+    @Override
+    FileTypeDetector getFileTypeDetector() {
+        Path userMimeTypes = Paths.get(AccessController.doPrivileged(
+            new GetPropertyAction("user.home")), ".mime.types");
+        Path etcMimeTypes = Paths.get("/etc/mime.types");
+
+        return chain(new GnomeFileTypeDetector(),
+                     new MimeTypesFileTypeDetector(userMimeTypes),
+                     new MimeTypesFileTypeDetector(etcMimeTypes),
+                     new MagicFileTypeDetector());
     }
 }

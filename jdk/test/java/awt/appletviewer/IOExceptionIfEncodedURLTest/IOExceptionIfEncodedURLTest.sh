@@ -119,6 +119,14 @@ case "$OS" in
       TMP="/tmp"
       ;;
 
+   *BSD )
+      VAR="A different value for BSD"
+      DEFAULT_JDK=/usr/local/openjdk8
+      FILESEP="/"
+      PATHSEP=":"
+      TMP="/tmp"
+      ;;
+
    Windows* )
       VAR="A different value for Win32"
       DEFAULT_JDK="C:/Program Files/Java/jdk1.8.0"

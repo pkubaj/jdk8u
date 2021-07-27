@@ -112,20 +112,6 @@
 #define SHUTDOWN2_SIGNAL SIGINT
 #define SHUTDOWN3_SIGNAL SIGTERM
 
-#ifndef SIGRTMIN
-#ifdef __OpenBSD__
-#define SIGRTMIN        1
-#else
-#define SIGRTMIN        33
-#endif
-#endif
-#ifndef SIGRTMAX
-#ifdef __OpenBSD__
-#define SIGRTMAX        31
-#else
-#define SIGRTMAX        63
-#endif
-#endif
 #endif /* JVM_MD_H */
 
 #endif // OS_BSD_VM_JVM_BSD_H

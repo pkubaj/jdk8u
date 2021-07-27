@@ -40,7 +40,7 @@
 #endif
 #endif
 
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
 #define __HI(x) *(1+(int*)&x)
 #define __LO(x) *(int*)&x
 #define __HIp(x) *(1+(int*)x)

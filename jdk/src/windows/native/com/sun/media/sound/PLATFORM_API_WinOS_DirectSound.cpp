@@ -308,7 +308,7 @@ void DAUDIO_GetFormats(INT32 mixerIndex, INT32 deviceID, int isSource, void* cre
                                       DAUDIO_PCM,
                                       (bitsArray[bitIndex]==8)?FALSE:TRUE,  /* signed */
                                       (bitsArray[bitIndex]==8)?FALSE:
-#ifndef _LITTLE_ENDIAN
+#ifndef VM_LITTLE_ENDIAN
                                       TRUE /* big endian */
 #else
                                       FALSE /* little endian */
@@ -864,7 +864,7 @@ void* DAUDIO_Open(INT32 mixerIndex, INT32 deviceID, int isSource,
         return NULL;
     }
     if (sampleSizeInBits > 8 &&
-#ifdef _LITTLE_ENDIAN
+#ifdef VM_LITTLE_ENDIAN
         isBigEndian
 #else
         !isBigEndian

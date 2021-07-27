@@ -35,7 +35,10 @@ CFLAGS += $(DEBUG_CFLAGS/BYFILE) -D_NMT_NOINLINE_
 # to inhibit the effect of the previous line on CFLAGS.
 
 # Linker mapfile
-MAPFILE = $(GAMMADIR)/make/bsd/makefiles/mapfile-vers-debug
+ifeq ($(OS_VENDOR), Darwin)
+MAPSUFX = .macosx
+endif
+MAPFILE = $(GAMMADIR)/make/bsd/makefiles/mapfile-vers-debug$(MAPSUFX)
 
 VERSION = debug
 SYSDEFS += -DASSERT

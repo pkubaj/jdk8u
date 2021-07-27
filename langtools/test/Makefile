@@ -72,6 +72,14 @@ ifeq ($(OSNAME), Linux)
     ARCH=i586
   endif
 endif
+ifneq ($(findstring BSD, $(OSNAME)), )
+  PLATFORM = bsd
+  JT_PLATFORM = linux
+  ARCH = $(shell uname -p)
+  ifeq ($(ARCH), i386)
+    ARCH=i586
+  endif
+endif
 ifeq ($(OSNAME), Darwin)
   PLATFORM = bsd
   ARCH = $(shell uname -m)

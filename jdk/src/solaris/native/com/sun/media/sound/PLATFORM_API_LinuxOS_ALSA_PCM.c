@@ -675,6 +675,7 @@ int xrun_recovery(AlsaPcmInfo* info, int err) {
             return -1;
         }
         return 1;
+#ifdef ESTRPIPE
     } else if (err == -ESTRPIPE) {
         TRACE0("xrun_recovery: suspended.\n");
         ret = snd_pcm_resume(info->handle);
@@ -690,6 +691,7 @@ int xrun_recovery(AlsaPcmInfo* info, int err) {
             return -1;
         }
         return 1;
+#endif
     } else if (err == -EAGAIN) {
         TRACE0("xrun_recovery: EAGAIN try again flag.\n");
         return 0;

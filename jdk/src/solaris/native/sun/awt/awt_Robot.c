@@ -50,7 +50,7 @@
 
 #include "java_awt_event_InputEvent.h"
 
-#if defined(__linux__) || defined(MACOSX)
+#if defined(__linux__) || defined(MACOSX) || defined(_ALLBSD_SOURCE)
 #include <sys/socket.h>
 #endif
 

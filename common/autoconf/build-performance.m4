@@ -41,6 +41,10 @@ AC_DEFUN([BPERF_CHECK_CORES],
     # Looks like a MacOSX system
     NUM_CORES=`/usr/sbin/system_profiler -detailLevel full SPHardwareDataType | grep 'Cores' | awk  '{print [$]5}'`
     FOUND_CORES=yes
+  elif test "x$OPENJDK_BUILD_OS" = xbsd && test "x$(uname -s | grep -o BSD)" = xBSD; then
+    # Looks like a BSD system
+    NUM_CORES=`/sbin/sysctl -n hw.ncpu`
+    FOUND_CORES=yes
   elif test "x$OPENJDK_BUILD_OS" = xaix ; then
     NUM_LCPU=`lparstat -m 2> /dev/null | $GREP -o "lcpu=[[0-9]]*" | $CUT -d "=" -f 2`
     if test -n "$NUM_LCPU"; then
@@ -81,6 +85,15 @@ AC_DEFUN([BPERF_CHECK_MEMORY_SIZE],
     # Looks like a MacOSX system
     MEMORY_SIZE=`/usr/sbin/system_profiler -detailLevel full SPHardwareDataType | grep 'Memory' | awk  '{print [$]2}'`
     MEMORY_SIZE=`expr $MEMORY_SIZE \* 1024`
+    FOUND_MEM=yes
+  elif test "x$OPENJDK_BUILD_OS" = xbsd && test "x$(uname -s | grep -o OpenBSD)" = xOpenBSD; then
+    # Looks like an OpenBSD system
+    MEMORY_SIZE=`/sbin/sysctl -n hw.physmem | awk '{print int($NF / 1048576); }'`
+    FOUND_MEM=yes
+  elif test "x$OPENJDK_BUILD_OS" = xbsd && test "x$(uname -s | grep -o BSD)" = xBSD; then
+    # Looks like a BSD system
+    MEMORY_SIZE=`/sbin/sysctl -n hw.physmem`
+    MEMORY_SIZE=`expr $MEMORY_SIZE / 1024 / 1024`
     FOUND_MEM=yes
   elif test "x$OPENJDK_BUILD_OS" = xwindows; then
     # Windows, but without cygwin
@@ -212,8 +225,8 @@ AC_DEFUN([BPERF_SETUP_CCACHE_USAGE],
     # Only use ccache if it is 3.1.4 or later, which supports
     # precompiled headers.
     AC_MSG_CHECKING([if ccache supports precompiled headers])
-    HAS_GOOD_CCACHE=`($CCACHE --version | head -n 1 | grep -E 3.1.@<:@456789@:>@) 2> /dev/null`
-    if test "x$HAS_GOOD_CCACHE" = x; then
+    HAS_GOOD_CCACHE=`($CCACHE --version | head -n 1 | awk '{ split(@S|@3, a, "."); if (a@<:@1@:>@ >= 3 && (a@<:@2@:>@ > 1 || (a@<:@2@:>@ == 1 && a@<:@3@:>@ >= 4))) print "yes"; else print "no"; }') 2> /dev/null`
+    if test "x$HAS_GOOD_CCACHE" != xyes; then
       AC_MSG_RESULT([no, disabling ccache])
       CCACHE=
       CCACHE_STATUS="disabled"

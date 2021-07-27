@@ -66,6 +66,10 @@ ifndef CC_INTERP
     FORCE_TIERED=1
   endif
 endif
+# C1 is not ported on ppc64, so we cannot build a tiered VM:
+ifneq (,$(findstring $(ARCH), ppc ppc64))
+  FORCE_TIERED=0
+endif
 
 ifdef LP64
   ifeq ("$(filter $(LP64_ARCH),$(BUILDARCH))","")
@@ -220,21 +224,7 @@ all:
 	@echo "  $(TARGETS_SHARK)"
 	@echo "  $(TARGETS_MINIMAL1)"
 
-checks: check_os_version check_j2se_version
-
-# We do not want people accidentally building on old systems (e.g. Linux 2.2.x,
-# Solaris 2.5.1, 2.6).
-# Disable this check by setting DISABLE_HOTSPOT_OS_VERSION_CHECK=ok.
-
-#SUPPORTED_OS_VERSION = 2.4% 2.5% 2.6% 2.7%
-DISABLE_HOTSPOT_OS_VERSION_CHECK = ok
-OS_VERSION := $(shell uname -r)
-EMPTY_IF_NOT_SUPPORTED = $(filter $(SUPPORTED_OS_VERSION),$(OS_VERSION))
-
-check_os_version:
-ifeq ($(DISABLE_HOTSPOT_OS_VERSION_CHECK)$(EMPTY_IF_NOT_SUPPORTED),)
-	$(QUIETLY) >&2 echo "*** This OS is not supported:" `uname -a`; exit 1;
-endif
+checks: check_j2se_version
 
 # jvmti.make requires XSLT (J2SE 1.4.x or newer):
 XSLT_CHECK	= $(REMOTE) $(RUN.JAVAP) javax.xml.transform.TransformerFactory

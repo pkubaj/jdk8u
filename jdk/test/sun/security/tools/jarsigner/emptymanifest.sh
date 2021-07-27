@@ -39,6 +39,11 @@ case "$OS" in
   Windows_* )
     FS="\\"
     ;;
+  *BSD )
+    PS=":"
+    FS="/"
+    PATH="${PATH}${PS}${FS}usr${FS}local${FS}bin"
+    ;;
   * )
     FS="/"
     ;;

@@ -2243,7 +2243,7 @@ static void mcast_join_leave(JNIEnv *env, jobject this,
                 }
             }
 #endif
-#ifdef MACOSX
+#ifdef _ALLBSD_SOURCE
             if (family == AF_INET6 && index == 0) {
                 index = getDefaultScopeID(env);
             }

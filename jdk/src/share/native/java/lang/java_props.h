@@ -91,6 +91,9 @@ typedef struct {
 
     char *desktop;              /* Desktop name. */
 
+#ifdef __OpenBSD__
+    char *java_net_preferIPv4Stack; /* prefer IPv4 on OpenBSD. */
+#endif
 #ifdef MACOSX
     // These are for proxy-related information.
     // Note that if these platform-specific extensions get out of hand we should make a new

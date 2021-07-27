@@ -23,8 +23,11 @@
  */
 
 #include "precompiled.hpp"
-#ifndef _WINDOWS
+#if !defined(_WINDOWS) && !defined(_ALLBSD_SOURCE)
 #include "alloca.h"
+#endif
+#ifdef _ALLBSD_SOURCE
+#include <stdlib.h>
 #endif
 #include "asm/macroAssembler.hpp"
 #include "asm/macroAssembler.inline.hpp"

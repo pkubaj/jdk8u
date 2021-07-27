@@ -58,13 +58,18 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/sockio.h>
-#if defined(__APPLE__)
+#if defined(__APPLE__) || defined(__FreeBSD__)
 #include <net/ethernet.h>
 #include <net/if_var.h>
+#elif defined(__OpenBSD__)
+#include <netinet/if_ether.h>
+#include <netinet6/in6_var.h>
+#elif defined(__NetBSD__)
+#include <net/if_ether.h>
+#endif
 #include <net/if_dl.h>
 #include <netinet/in_var.h>
 #include <ifaddrs.h>
-#endif
 #endif
 
 #include "jvm.h"
@@ -2083,10 +2088,6 @@ static netif *enumIPv6Interfaces(JNIEnv *env, int sock, netif *ifs) {
         // ignore non IPv6 addresses
         if (ifa->ifa_addr == NULL || ifa->ifa_addr->sa_family != AF_INET6)
             continue;
-
-        // set scope ID to interface index
-        ((struct sockaddr_in6 *)ifa->ifa_addr)->sin6_scope_id =
-            getIndex(sock, ifa->ifa_name);
 
         // add interface to the list
         ifs = addif(env, sock, ifa->ifa_name, ifs, ifa->ifa_addr, NULL,

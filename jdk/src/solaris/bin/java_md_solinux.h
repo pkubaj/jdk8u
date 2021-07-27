@@ -48,6 +48,9 @@ extern char **environ;
 #ifdef __solaris__
 static const char *system_dir   = "/usr/jdk";
 static const char *user_dir     = "/jdk";
+#elif defined(__FreeBSD__)
+static const char *system_dir  = PACKAGE_PATH "/openjdk8";
+static const char *user_dir    = "/java";
 #else /* !__solaris__, i.e. Linux, AIX,.. */
 static const char *system_dir   = "/usr/java";
 static const char *user_dir     = "/java";

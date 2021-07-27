@@ -66,7 +66,7 @@ case "$OS" in
     CP="${FS}bin${FS}cp"
     CHMOD="${FS}bin${FS}chmod"
     ;;
-  Darwin )
+  *BSD | Darwin )
     FS="/"
     PS=":"
     CP="${FS}bin${FS}cp"

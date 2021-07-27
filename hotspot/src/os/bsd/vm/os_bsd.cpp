@@ -97,14 +97,29 @@
 # include <sys/shm.h>
 #ifndef __APPLE__
 # include <link.h>
+# include <stdlib.h>
 #endif
 # include <stdint.h>
 # include <inttypes.h>
 # include <sys/ioctl.h>
 # include <sys/syscall.h>
 
+#ifdef __FreeBSD__
+# include <pthread_np.h>
+# include <sys/cpuset.h>
+# include <vm/vm_param.h>
+#endif
+
 #if defined(__FreeBSD__) || defined(__NetBSD__)
 # include <elf.h>
+#endif
+
+#ifdef __NetBSD__
+#include <lwp.h>
+#endif
+
+#ifdef __OpenBSD__
+# include <pthread_np.h>
 #endif
 
 #ifdef __APPLE__
@@ -136,9 +151,11 @@ mach_timebase_info_data_t os::Bsd::_timebase_info = {0, 0};
 volatile uint64_t         os::Bsd::_max_abstime   = 0;
 #else
 int (*os::Bsd::_clock_gettime)(clockid_t, struct timespec *) = NULL;
+int (*os::Bsd::_getcpuclockid)(pthread_t, clockid_t *) = NULL;
 #endif
 pthread_t os::Bsd::_main_thread;
 int os::Bsd::_page_size = -1;
+pthread_condattr_t os::Bsd::_condattr[1];
 
 static jlong initial_time_count=0;
 
@@ -169,6 +186,29 @@ julong os::available_memory() {
 
 // available here means free
 julong os::Bsd::available_memory() {
+#ifdef __FreeBSD__
+  static const char *vm_stats[] = {
+    "vm.stats.vm.v_free_count",
+#if __FreeBSD_version < 1200016
+    "vm.stats.vm.v_cache_count",
+#endif
+    "vm.stats.vm.v_inactive_count"
+  };
+  size_t size;
+  julong free_pages;
+  u_int i, npages;
+
+  for (i = 0, free_pages = 0; i < sizeof(vm_stats) / sizeof(vm_stats[0]); i++) {
+    size = sizeof(npages);
+    if (sysctlbyname(vm_stats[i], &npages, &size, NULL, 0) == -1) {
+      free_pages = 0;
+      break;
+    }
+    free_pages += npages;
+  }
+  if (free_pages > 0)
+    return free_pages * os::vm_page_size();
+#endif
   uint64_t available = physical_memory() >> 2;
 #ifdef __APPLE__
   mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
@@ -208,7 +248,7 @@ bool os::have_special_privileges() {
   static bool init = false;
   static bool privileges = false;
   if (!init) {
-    privileges = (getuid() != geteuid()) || (getgid() != getegid());
+    privileges = issetugid();
     init = true;
   }
   return privileges;
@@ -229,12 +269,16 @@ static char cpu_arch[] = "amd64";
 static char cpu_arch[] = "arm";
 #elif defined(PPC32)
 static char cpu_arch[] = "ppc";
+#elif defined(PPC64)
+static char cpu_arch[] = "ppc64";
 #elif defined(SPARC)
 #  ifdef _LP64
 static char cpu_arch[] = "sparcv9";
 #  else
 static char cpu_arch[] = "sparc";
 #  endif
+#elif defined(AARCH64)
+static char cpu_arch[] = "aarch64";
 #else
 #error Add appropriate cpu_arch setting
 #endif
@@ -272,6 +316,8 @@ void os::Bsd::initialize_system_info() {
 
 #if defined (HW_MEMSIZE) // Apple
   mib[1] = HW_MEMSIZE;
+#elif defined(HW_PHYSMEM64) // OpenBSD & NetBSD
+  mib[1] = HW_PHYSMEM64;
 #elif defined(HW_PHYSMEM) // Most of BSD
   mib[1] = HW_PHYSMEM;
 #elif defined(HW_REALMEM) // Old FreeBSD
@@ -411,12 +457,21 @@ void os::init_system_properties_values() {
     const char *v = ::getenv("LD_LIBRARY_PATH");
     const char *v_colon = ":";
     if (v == NULL) { v = ""; v_colon = ""; }
+#ifdef __APPLE__
     // That's +1 for the colon and +1 for the trailing '\0'.
     char *ld_library_path = (char *)NEW_C_HEAP_ARRAY(char,
                                                      strlen(v) + 1 +
                                                      sizeof(SYS_EXT_DIR) + sizeof("/lib/") + strlen(cpu_arch) + sizeof(DEFAULT_LIBPATH) + 1,
                                                      mtInternal);
     sprintf(ld_library_path, "%s%s" SYS_EXT_DIR "/lib/%s:" DEFAULT_LIBPATH, v, v_colon, cpu_arch);
+#else
+    // That's +1 for the colon and +1 for the trailing '\0'.
+    char *ld_library_path = (char *)NEW_C_HEAP_ARRAY(char,
+                                                     strlen(v) + 1 +
+                                                     sizeof(PACKAGE_PATH) + sizeof("/lib") + 1,
+                                                     mtInternal);
+    sprintf(ld_library_path, "%s%s" PACKAGE_PATH "/lib", v, v_colon);
+#endif
     Arguments::set_library_path(ld_library_path);
     FREE_C_HEAP_ARRAY(char, ld_library_path, mtInternal);
   }
@@ -591,6 +646,9 @@ void os::Bsd::signal_sets_init() {
   sigaddset(&unblocked_sigs, SIGSEGV);
   sigaddset(&unblocked_sigs, SIGBUS);
   sigaddset(&unblocked_sigs, SIGFPE);
+#if defined(PPC64)
+  sigaddset(&unblocked_sigs, SIGTRAP);
+#endif
   sigaddset(&unblocked_sigs, SR_signum);
 
   if (!ReduceSignalUsage) {
@@ -718,6 +776,11 @@ static void *java_start(Thread *thread) {
 
 #ifdef __APPLE__
   uint64_t unique_thread_id = locate_unique_thread_id(osthread->thread_id());
+  guarantee(unique_thread_id != 0, "unique thread id was not found");
+  osthread->set_unique_thread_id(unique_thread_id);
+#endif
+#ifdef __FreeBSD__
+  uint64_t unique_thread_id = os::Bsd::gettid();
   guarantee(unique_thread_id != 0, "unique thread id was not found");
   osthread->set_unique_thread_id(unique_thread_id);
 #endif
@@ -884,6 +947,11 @@ bool os::create_attached_thread(JavaThread* thread) {
   guarantee(unique_thread_id != 0, "just checking");
   osthread->set_unique_thread_id(unique_thread_id);
 #endif
+#ifdef __FreeBSD__
+  uint64_t unique_thread_id = os::Bsd::gettid();
+  guarantee(unique_thread_id != 0, "unique thread id was not found");
+  osthread->set_unique_thread_id(unique_thread_id);
+#endif
   osthread->set_pthread_id(::pthread_self());
 
   // initialize floating point control register
@@ -983,6 +1051,13 @@ bool os::enable_vtime()   { return false; }
 bool os::vtime_enabled()  { return false; }
 
 double os::elapsedVTime() {
+#ifdef RUSAGE_THREAD
+  struct rusage usage;
+  int retval = getrusage(RUSAGE_THREAD, &usage);
+  if (retval == 0) {
+    return (double) (usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) + (double) (usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) / (1000 * 1000);
+  }
+#endif
   // better than nothing, but not much
   return elapsedTime();
 }
@@ -1008,11 +1083,15 @@ void os::Bsd::clock_init() {
 void os::Bsd::clock_init() {
   struct timespec res;
   struct timespec tp;
+  _getcpuclockid = (int (*)(pthread_t, clockid_t *))dlsym(RTLD_DEFAULT, "pthread_getcpuclockid");
   if (::clock_getres(CLOCK_MONOTONIC, &res) == 0 &&
       ::clock_gettime(CLOCK_MONOTONIC, &tp)  == 0) {
     // yes, monotonic clock is supported
     _clock_gettime = ::clock_gettime;
+    return;
   }
+  warning("No monotonic clock was available - timed services may " \
+          "be adversely affected if the time-of-day clock changes");
 }
 #endif
 
@@ -1048,7 +1127,7 @@ jlong os::javaTimeNanos() {
 jlong os::javaTimeNanos() {
   if (Bsd::supports_monotonic_clock()) {
     struct timespec tp;
-    int status = Bsd::_clock_gettime(CLOCK_MONOTONIC, &tp);
+    int status = ::clock_gettime(CLOCK_MONOTONIC, &tp);
     assert(status == 0, "gettime error");
     jlong result = jlong(tp.tv_sec) * (1000 * 1000 * 1000) + jlong(tp.tv_nsec);
     return result;
@@ -1190,35 +1269,38 @@ size_t os::lasterror(char *buf, size_t len) {
 pid_t os::Bsd::gettid() {
   int retval = -1;
 
-#ifdef __APPLE__ //XNU kernel
+#if defined(__APPLE__) //XNU kernel
   // despite the fact mach port is actually not a thread id use it
   // instead of syscall(SYS_thread_selfid) as it certainly fits to u4
   retval = ::pthread_mach_thread_np(::pthread_self());
   guarantee(retval != 0, "just checking");
   return retval;
 
+#elif defined(__FreeBSD__)
+#if __FreeBSD_version > 900030
+  return ::pthread_getthreadid_np();
 #else
-  #ifdef __FreeBSD__
-  retval = syscall(SYS_thr_self);
-  #else
-    #ifdef __OpenBSD__
+  long tid;
+  thr_self(&tid);
+  return (pid_t)tid;
+#endif
+#elif defined(__OpenBSD__)
   retval = syscall(SYS_getthrid);
-    #else
-      #ifdef __NetBSD__
-  retval = (pid_t) syscall(SYS__lwp_self);
-      #endif
-    #endif
-  #endif
+#elif defined(__NetBSD__)
+  retval = (pid_t) _lwp_self();
 #endif
 
   if (retval == -1) {
     return getpid();
   }
+  return retval;
 }
 
 intx os::current_thread_id() {
-#ifdef __APPLE__
+#if defined(__APPLE__)
   return (intx)::pthread_mach_thread_np(::pthread_self());
+#elif defined(__FreeBSD__)
+  return os::Bsd::gettid();
 #else
   return (intx)::pthread_self();
 #endif
@@ -1508,6 +1590,10 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen)
   #define EM_X86_64       62              /* AMD x86-64 */
   #endif
 
+  #ifndef EM_AARCH64
+  #define EM_AARCH64     183              /* ARM AARCH64 */
+  #endif
+
   static const arch_t arch_array[]={
     {EM_386,         EM_386,     ELFCLASS32, ELFDATA2LSB, (char*)"IA 32"},
     {EM_486,         EM_386,     ELFCLASS32, ELFDATA2LSB, (char*)"IA 32"},
@@ -1524,7 +1610,8 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen)
     {EM_MIPS_RS3_LE, EM_MIPS_RS3_LE, ELFCLASS32, ELFDATA2LSB, (char*)"MIPSel"},
     {EM_MIPS,        EM_MIPS,    ELFCLASS32, ELFDATA2MSB, (char*)"MIPS"},
     {EM_PARISC,      EM_PARISC,  ELFCLASS32, ELFDATA2MSB, (char*)"PARISC"},
-    {EM_68K,         EM_68K,     ELFCLASS32, ELFDATA2MSB, (char*)"M68k"}
+    {EM_68K,         EM_68K,     ELFCLASS32, ELFDATA2MSB, (char*)"M68k"},
+    {EM_AARCH64,     EM_AARCH64, ELFCLASS64, ELFDATA2LSB, (char*)"AARCH64"},
   };
 
   #if  (defined IA32)
@@ -1541,6 +1628,8 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen)
     static  Elf32_Half running_arch_code=EM_PPC64;
   #elif  (defined __powerpc__)
     static  Elf32_Half running_arch_code=EM_PPC;
+  #elif  (defined AARCH64)
+    static  Elf32_Half running_arch_code=EM_AARCH64;
   #elif  (defined ARM)
     static  Elf32_Half running_arch_code=EM_ARM;
   #elif  (defined S390)
@@ -1557,13 +1646,13 @@ void * os::dll_load(const char *filename, char *ebuf, int ebuflen)
     static  Elf32_Half running_arch_code=EM_68K;
   #else
     #error Method os::dll_load requires that one of following is defined:\
-         IA32, AMD64, IA64, __sparc, __powerpc__, ARM, S390, ALPHA, MIPS, MIPSEL, PARISC, M68K
+         AARCH64, IA32, AMD64, IA64, __sparc, __powerpc__, ARM, S390, ALPHA, MIPS, MIPSEL, PARISC, M68K
   #endif
 
   // Identify compatability class for VM's architecture and library's architecture
   // Obtain string descriptions for architectures
 
-  arch_t lib_arch={elf_head.e_machine,0,elf_head.e_ident[EI_CLASS], elf_head.e_ident[EI_DATA], NULL};
+  arch_t lib_arch={ elf_head.e_machine, 0, (char) elf_head.e_ident[EI_CLASS], (char) elf_head.e_ident[EI_DATA], NULL};
   int running_arch_index=-1;
 
   for (unsigned int i=0 ; i < ARRAY_SIZE(arch_array) ; i++ ) {
@@ -1627,24 +1716,6 @@ void* os::get_default_process_handle() {
 // XXX: Do we need a lock around this as per Linux?
 void* os::dll_lookup(void* handle, const char* name) {
   return dlsym(handle, name);
-}
-
-
-static bool _print_ascii_file(const char* filename, outputStream* st) {
-  int fd = ::open(filename, O_RDONLY);
-  if (fd == -1) {
-     return false;
-  }
-
-  char buf[32];
-  int bytes;
-  while ((bytes = ::read(fd, buf, sizeof(buf))) > 0) {
-    st->print_raw(buf, bytes);
-  }
-
-  ::close(fd);
-
-  return true;
 }
 
 void os::print_dll_info(outputStream *st) {
@@ -1738,14 +1809,14 @@ int os::get_loaded_modules_info(os::LoadedModulesCallbackFunc callback, void *pa
 }
 
 void os::print_os_info_brief(outputStream* st) {
-  st->print("Bsd");
+  st->print_cr("BSD");
 
   os::Posix::print_uname_info(st);
 }
 
 void os::print_os_info(outputStream* st) {
   st->print("OS:");
-  st->print("Bsd");
+  st->print_cr("BSD");
 
   os::Posix::print_uname_info(st);
 
@@ -1758,6 +1829,29 @@ void os::pd_print_cpu_info(outputStream* st) {
   // Nothing to do for now.
 }
 
+#ifdef __FreeBSD__
+static void get_swap_info(int *total_pages, int *used_pages) {
+  struct xswdev xsw;
+  size_t mibsize, size;
+  int mib[16];
+  int n, total = 0, used = 0;
+
+  mibsize = sizeof(mib) / sizeof(mib[0]);
+  if (sysctlnametomib("vm.swap_info", mib, &mibsize) != -1) {
+    for (n = 0; ; n++) {
+      mib[mibsize] = n;
+      size = sizeof(xsw);
+      if (sysctl(mib, mibsize + 1, &xsw, &size, NULL, 0) == -1)
+        break;
+      total += xsw.xsw_nblks;
+      used += xsw.xsw_used;
+    }
+  }
+  *total_pages = total;
+  *used_pages = used;
+}
+#endif
+
 void os::print_memory_info(outputStream* st) {
 
   st->print("Memory:");
@@ -1767,11 +1861,14 @@ void os::print_memory_info(outputStream* st) {
             os::physical_memory() >> 10);
   st->print("(" UINT64_FORMAT "k free)",
             os::available_memory() >> 10);
-  st->cr();
-
-  // meminfo
-  st->print("\n/proc/meminfo:\n");
-  _print_ascii_file("/proc/meminfo", st);
+#ifdef __FreeBSD__
+  int total, used;
+  get_swap_info(&total, &used);
+  st->print(", swap " UINT64_FORMAT "k",
+            (total * os::vm_page_size()) >> 10);
+  st->print("(" UINT64_FORMAT "k free)",
+            ((total - used) * os::vm_page_size()) >> 10);
+#endif
   st->cr();
 }
 
@@ -1810,6 +1907,9 @@ void os::print_signal_handlers(outputStream* st, char* buf, size_t buflen) {
   print_signal_handler(st, SHUTDOWN2_SIGNAL , buf, buflen);
   print_signal_handler(st, SHUTDOWN3_SIGNAL , buf, buflen);
   print_signal_handler(st, BREAK_SIGNAL, buf, buflen);
+#if defined(PPC64)
+  print_signal_handler(st, SIGTRAP, buf, buflen);
+#endif
 }
 
 static char saved_jvm_path[MAXPATHLEN] = {0};
@@ -2007,7 +2107,7 @@ class Semaphore : public StackObj {
     os_semaphore_t _semaphore;
 };
 
-Semaphore::Semaphore() : _semaphore(0) {
+Semaphore::Semaphore() {
   SEM_INIT(_semaphore, 0);
 }
 
@@ -2195,7 +2295,7 @@ void bsd_wrap_code(char* base, size_t size) {
       if (::write(fd, "", 1) == 1) {
         mmap(base, size,
              PROT_READ|PROT_WRITE|PROT_EXEC,
-             MAP_PRIVATE|MAP_FIXED|MAP_NORESERVE, fd, 0);
+             MAP_PRIVATE|MAP_FIXED, fd, 0);
       }
     }
     ::close(fd);
@@ -2305,7 +2405,7 @@ bool os::pd_uncommit_memory(char* addr, size_t size) {
   return ::mprotect(addr, size, PROT_NONE) == 0;
 #else
   uintptr_t res = (uintptr_t) ::mmap(addr, size, PROT_NONE,
-                MAP_PRIVATE|MAP_FIXED|MAP_NORESERVE|MAP_ANONYMOUS, -1, 0);
+                MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0);
   return res  != (uintptr_t) MAP_FAILED;
 #endif
 }
@@ -2328,14 +2428,20 @@ static address _highest_vm_reserved_address = NULL;
 // 'requested_addr' is only treated as a hint, the return value may or
 // may not start from the requested address. Unlike Bsd mmap(), this
 // function returns NULL to indicate failure.
-static char* anon_mmap(char* requested_addr, size_t bytes, bool fixed) {
+static char* anon_mmap(char* requested_addr, size_t bytes, size_t alignment_hint, bool fixed) {
   char * addr;
   int flags;
 
-  flags = MAP_PRIVATE | MAP_NORESERVE | MAP_ANONYMOUS;
+  assert(!(fixed && (alignment_hint > 0)), "alignment hint meaningless with fixed mmap");
+
+  flags = MAP_PRIVATE | MAP_ANONYMOUS;
   if (fixed) {
     assert((uintptr_t)requested_addr % os::Bsd::page_size() == 0, "unaligned address");
     flags |= MAP_FIXED;
+#ifndef __OpenBSD__
+  } else if (alignment_hint > 0) {
+    flags |= MAP_ALIGNED(ffs(alignment_hint) - 1);
+#endif
   }
 
   // Map reserved/uncommitted pages PROT_NONE so we fail early if we
@@ -2367,7 +2473,7 @@ static int anon_munmap(char * addr, size_t size) {
 
 char* os::pd_reserve_memory(size_t bytes, char* requested_addr,
                          size_t alignment_hint) {
-  return anon_mmap(requested_addr, bytes, (requested_addr != NULL));
+  return anon_mmap(requested_addr, bytes, alignment_hint, (requested_addr != NULL));
 }
 
 bool os::pd_release_memory(char* addr, size_t size) {
@@ -2413,19 +2519,95 @@ bool os::unguard_memory(char* addr, size_t size) {
   return bsd_mprotect(addr, size, PROT_READ|PROT_WRITE);
 }
 
-bool os::Bsd::hugetlbfs_sanity_check(bool warn, size_t page_size) {
-  return false;
-}
-
 // Large page support
 
 static size_t _large_page_size = 0;
 
 void os::large_page_init() {
+  if (UseLargePages) {
+    // print a warning if any large page related flag is specified on command line
+    bool warn_on_failure = !FLAG_IS_DEFAULT(UseLargePages)        ||
+                           !FLAG_IS_DEFAULT(LargePageSizeInBytes);
+
+    UseLargePages = Bsd::superpage_sanity_check(warn_on_failure, &_large_page_size);
+  }
+}
+
+#ifdef __FreeBSD__
+// Insertion sort for small arrays (descending order).
+static void insertion_sort_descending(size_t* array, int len) {
+  for (int i = 0; i < len; i++) {
+    size_t val = array[i];
+    for (size_t key = i; key > 0 && array[key - 1] < val; --key) {
+      size_t tmp = array[key];
+      array[key] = array[key - 1];
+      array[key - 1] = tmp;
+    }
+  }
+}
+#endif
+
+bool os::Bsd::superpage_sanity_check(bool warn, size_t* page_size) {
+#ifdef __FreeBSD__
+  const unsigned int usable_count = VM_Version::page_size_count();
+  if (usable_count == 1) {
+    return false;
+  }
+
+  // Fill the array of page sizes.
+  int n = ::getpagesizes(_page_sizes, page_sizes_max);
+  assert(n > 0, "FreeBSD bug?");
+
+  if (n == page_sizes_max) {
+    // Add a sentinel value (necessary only if the array was completely filled
+    // since it is static (zeroed at initialization)).
+    _page_sizes[--n] = 0;
+    DEBUG_ONLY(warning("increase the size of the os::_page_sizes array.");)
+  }
+  assert(_page_sizes[n] == 0, "missing sentinel");
+  trace_page_sizes("available page sizes", _page_sizes, n);
+
+  if (n == 1) return false;     // Only one page size available.
+
+  // Skip sizes larger than 4M (or LargePageSizeInBytes if it was set) and
+  // select up to usable_count elements.  First sort the array, find the first
+  // acceptable value, then copy the usable sizes to the top of the array and
+  // trim the rest.  Make sure to include the default page size :-).
+  //
+  // A better policy could get rid of the 4M limit by taking the sizes of the
+  // important VM memory regions (java heap and possibly the code cache) into
+  // account.
+  insertion_sort_descending(_page_sizes, n);
+  const size_t size_limit =
+    FLAG_IS_DEFAULT(LargePageSizeInBytes) ? 4 * M : LargePageSizeInBytes;
+  int beg;
+  for (beg = 0; beg < n && _page_sizes[beg] > size_limit; ++beg) /* empty */ ;
+  const int end = MIN2((int)usable_count, n) - 1;
+  for (int cur = 0; cur < end; ++cur, ++beg) {
+    _page_sizes[cur] = _page_sizes[beg];
+  }
+  _page_sizes[end] = vm_page_size();
+  _page_sizes[end + 1] = 0;
+
+  if (_page_sizes[end] > _page_sizes[end - 1]) {
+    // Default page size is not the smallest; sort again.
+    insertion_sort_descending(_page_sizes, end + 1);
+  }
+  *page_size = _page_sizes[0];
+
+  trace_page_sizes("usable page sizes", _page_sizes, end + 1);
+  return true;
+#else
+  return false;
+#endif
 }
 
 
 char* os::reserve_memory_special(size_t bytes, size_t alignment, char* req_addr, bool exec) {
+#if !defined(__APPLE__)
+  fatal("os::reserve_memory_special should not be called.");
+  return NULL;
+#else
   fatal("This code is not used or maintained.");
 
   // "exec" is passed in but not used.  Creating the shared image for
@@ -2485,9 +2667,14 @@ char* os::reserve_memory_special(size_t bytes, size_t alignment, char* req_addr,
   MemTracker::record_virtual_memory_reserve_and_commit((address)addr, bytes, CALLER_PC);
 
   return addr;
+#endif
 }
 
 bool os::release_memory_special(char* base, size_t bytes) {
+#if !defined(__APPLE__)
+  fatal("os::release_memory_special should not be called.");
+  return false;
+#else
   if (MemTracker::tracking_level() > NMT_minimal) {
     Tracker tkr = MemTracker::get_virtual_memory_release_tracker();
     // detaching the SHM segment will also delete it, see reserve_memory_special()
@@ -2501,21 +2688,28 @@ bool os::release_memory_special(char* base, size_t bytes) {
   } else {
     return shmdt(base) == 0;
   }
+#endif
 }
 
 size_t os::large_page_size() {
   return _large_page_size;
 }
 
-// HugeTLBFS allows application to commit large page memory on demand;
-// with SysV SHM the entire memory region must be allocated as shared
-// memory.
+// FreeBSD allows application to commit large page memory on demand.
 bool os::can_commit_large_page_memory() {
-  return UseHugeTLBFS;
+#ifdef __FreeBSD__
+  return true;
+#else
+  return false;
+#endif
 }
 
 bool os::can_execute_large_page_memory() {
-  return UseHugeTLBFS;
+#ifdef __FreeBSD__
+  return true;
+#else
+  return false;
+#endif
 }
 
 // Reserve memory at an arbitrary address, only if that area is
@@ -2547,7 +2741,7 @@ char* os::pd_attempt_reserve_memory_at(size_t bytes, char* requested_addr) {
 
   // Bsd mmap allows caller to pass an address as hint; give it a try first,
   // if kernel honors the hint then we can return immediately.
-  char * addr = anon_mmap(requested_addr, bytes, false);
+  char * addr = anon_mmap(requested_addr, bytes, 0, false);
   if (addr == requested_addr) {
      return requested_addr;
   }
@@ -2825,6 +3019,7 @@ OSReturn os::set_native_priority(Thread* thread, int newpri) {
   return OS_OK;
 #elif defined(__FreeBSD__)
   int ret = pthread_setprio(thread->osthread()->pthread_id(), newpri);
+  return (ret == 0) ? OS_OK : OS_ERR;
 #elif defined(__APPLE__) || defined(__NetBSD__)
   struct sched_param sp;
   int policy;
@@ -3371,6 +3566,9 @@ void os::Bsd::install_signal_handlers() {
     set_signal_handler(SIGBUS, true);
     set_signal_handler(SIGILL, true);
     set_signal_handler(SIGFPE, true);
+#if defined(PPC64)
+    set_signal_handler(SIGTRAP, true);
+#endif
     set_signal_handler(SIGXFSZ, true);
 
 #if defined(__APPLE__)
@@ -3419,18 +3617,6 @@ void os::Bsd::install_signal_handlers() {
   }
 }
 
-
-/////
-// glibc on Bsd platform uses non-documented flag
-// to indicate, that some special sort of signal
-// trampoline is used.
-// We will never set this flag, and we should
-// ignore this flag in our diagnostic
-#ifdef SIGNIFICANT_SIGNAL_MASK
-#undef SIGNIFICANT_SIGNAL_MASK
-#endif
-#define SIGNIFICANT_SIGNAL_MASK (~0x04000000)
-
 static const char* get_signal_handler_name(address handler,
                                            char* buf, int buflen) {
   int offset;
@@ -3454,9 +3640,6 @@ static void print_signal_handler(outputStream* st, int sig,
 
   sigaction(sig, NULL, &sa);
 
-  // See comment for SIGNIFICANT_SIGNAL_MASK define
-  sa.sa_flags &= SIGNIFICANT_SIGNAL_MASK;
-
   st->print("%s: ", os::exception_name(sig, buf, buflen));
 
   address handler = (sa.sa_flags & SA_SIGINFO)
@@ -3478,7 +3661,7 @@ static void print_signal_handler(outputStream* st, int sig,
   // May be, handler was resetted by VMError?
   if(rh != NULL) {
     handler = rh;
-    sa.sa_flags = VMError::get_resetted_sigflags(sig) & SIGNIFICANT_SIGNAL_MASK;
+    sa.sa_flags = VMError::get_resetted_sigflags(sig);
   }
 
   st->print(", sa_flags=");
@@ -3520,6 +3703,9 @@ void os::run_periodic_checks() {
   DO_SIGNAL_CHECK(SIGBUS);
   DO_SIGNAL_CHECK(SIGPIPE);
   DO_SIGNAL_CHECK(SIGXFSZ);
+#if defined(PPC64)
+  DO_SIGNAL_CHECK(SIGTRAP);
+#endif
 
 
   // ReduceSignalUsage allows the user to override these handlers
@@ -3553,8 +3739,6 @@ void os::Bsd::check_signal_handler(int sig) {
 
   os_sigaction(sig, (struct sigaction*)NULL, &act);
 
-
-  act.sa_flags &= SIGNIFICANT_SIGNAL_MASK;
 
   address thisHandler = (act.sa_flags & SA_SIGINFO)
     ? CAST_FROM_FN_PTR(address, act.sa_sigaction)
@@ -3620,6 +3804,14 @@ extern void report_error(char* file_name, int line_no, char* title, char* format
 
 extern bool signal_name(int signo, char* buf, size_t len);
 
+#ifndef SIGRTMAX
+#ifdef __OpenBSD__
+#define SIGRTMAX        31
+#else
+#define SIGRTMAX        63
+#endif
+#endif
+
 const char* os::exception_name(int exception_code, char* buf, size_t size) {
   if (0 < exception_code && exception_code <= SIGRTMAX) {
     // signal
@@ -3667,6 +3859,25 @@ void os::init(void) {
 
   Bsd::clock_init();
   initial_time_count = javaTimeNanos();
+
+  // pthread_condattr initialization for monotonic clock
+  int status;
+  pthread_condattr_t* _condattr = os::Bsd::condAttr();
+  if ((status = pthread_condattr_init(_condattr)) != 0) {
+    fatal(err_msg("pthread_condattr_init: %s", strerror(status)));
+  }
+  // Only set the clock if CLOCK_MONOTONIC is available
+  if (Bsd::supports_monotonic_clock()) {
+    if ((status = pthread_condattr_setclock(_condattr, CLOCK_MONOTONIC)) != 0) {
+      if (status == EINVAL) {
+        warning("Unable to use monotonic clock with relative timed-waits" \
+                " - changes to the time-of-day clock may have adverse affects");
+      } else {
+        fatal(err_msg("pthread_condattr_setclock: %s", strerror(status)));
+      }
+    }
+  }
+  // else it defaults to CLOCK_REALTIME
 
 #ifdef __APPLE__
   // XXXDARWIN
@@ -3826,19 +4037,37 @@ int os::active_processor_count() {
     return ActiveProcessorCount;
   }
 
+#ifdef __FreeBSD__
+  int online_cpus = 0;
+  cpuset_t mask;
+  if (cpuset_getaffinity(CPU_LEVEL_WHICH, CPU_WHICH_PID, -1, sizeof(mask),
+      &mask) == 0)
+    for (u_int i = 0; i < sizeof(mask) / sizeof(long); i++)
+      online_cpus += __builtin_popcountl(((long *)&mask)[i]);
+  if (online_cpus > 0 && online_cpus <= _processor_count)
+    return online_cpus;
+  online_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+  if (online_cpus >= 1)
+    return online_cpus;
+#endif
+
   return _processor_count;
 }
 
 void os::set_native_thread_name(const char *name) {
-#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
-  // This is only supported in Snow Leopard and beyond
   if (name != NULL) {
+#if defined(__APPLE__) && MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
+    // This is only supported in Snow Leopard and beyond
     // Add a "Java: " prefix to the name
     char buf[MAXTHREADNAMESIZE];
     snprintf(buf, sizeof(buf), "Java: %s", name);
     pthread_setname_np(buf);
-  }
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+    pthread_set_name_np(pthread_self(), name);
+#elif defined(__NetBSD__)
+    pthread_setname_np(pthread_self(), "%s", name);
 #endif
+  }
 }
 
 bool os::distribute_processes(uint length, uint* distribution) {
@@ -4036,7 +4265,10 @@ int os::open(const char *path, int oflag, int mode) {
   }
   int fd;
   int o_delete = (oflag & O_DELETE);
-  oflag = oflag & ~O_DELETE;
+  oflag &= ~O_DELETE;
+#ifdef O_CLOEXEC
+  oflag |= O_CLOEXEC;
+#endif
 
   fd = ::open(path, oflag, mode);
   if (fd == -1) return -1;
@@ -4081,7 +4313,7 @@ int os::open(const char *path, int oflag, int mode) {
      * 4843136: (process) pipe file descriptor from Runtime.exec not being closed
      * 6339493: (process) Runtime.exec does not close all file descriptors on Solaris 9
      */
-#ifdef FD_CLOEXEC
+#if !defined(O_CLOEXEC) && defined(FD_CLOEXEC)
     {
         int flags = ::fcntl(fd, F_GETFD);
         if (flags != -1)
@@ -4221,8 +4453,9 @@ jlong os::current_thread_cpu_time() {
 #ifdef __APPLE__
   return os::thread_cpu_time(Thread::current(), true /* user + sys */);
 #else
-  Unimplemented();
-  return 0;
+  if (Bsd::_getcpuclockid != NULL)
+    return os::thread_cpu_time(Thread::current(), true /* user + sys */);
+  return -1;
 #endif
 }
 
@@ -4230,8 +4463,9 @@ jlong os::thread_cpu_time(Thread* thread) {
 #ifdef __APPLE__
   return os::thread_cpu_time(thread, true /* user + sys */);
 #else
-  Unimplemented();
-  return 0;
+  if (Bsd::_getcpuclockid != NULL)
+    return os::thread_cpu_time(thread, true /* user + sys */);
+  return -1;
 #endif
 }
 
@@ -4239,8 +4473,9 @@ jlong os::current_thread_cpu_time(bool user_sys_cpu_time) {
 #ifdef __APPLE__
   return os::thread_cpu_time(Thread::current(), user_sys_cpu_time);
 #else
-  Unimplemented();
-  return 0;
+  if (Bsd::_getcpuclockid != NULL)
+    return os::thread_cpu_time(Thread::current(), user_sys_cpu_time);
+  return -1;
 #endif
 }
 
@@ -4265,8 +4500,41 @@ jlong os::thread_cpu_time(Thread *thread, bool user_sys_cpu_time) {
     return ((jlong)tinfo.user_time.seconds * 1000000000) + ((jlong)tinfo.user_time.microseconds * (jlong)1000);
   }
 #else
-  Unimplemented();
-  return 0;
+  if (user_sys_cpu_time && Bsd::_getcpuclockid != NULL) {
+    struct timespec tp;
+    clockid_t clockid;
+    int ret;
+
+    /*
+     * XXX This is essentially a copy of the Linux implementation,
+     *     but with fewer indirections.
+     */
+    ret = Bsd::_getcpuclockid(thread->osthread()->pthread_id(), &clockid);
+    if (ret != 0)
+      return -1;
+    /* NB: _clock_gettime only needs to be valid for CLOCK_MONOTONIC. */
+    ret = ::clock_gettime(clockid, &tp);
+    if (ret != 0)
+      return -1;
+    return (tp.tv_sec * NANOSECS_PER_SEC) + tp.tv_nsec;
+  }
+#ifdef RUSAGE_THREAD
+  if (thread == Thread::current()) {
+    struct rusage usage;
+    jlong nanos;
+
+    if (getrusage(RUSAGE_THREAD, &usage) != 0)
+      return -1;
+    nanos = (jlong)usage.ru_utime.tv_sec * NANOSECS_PER_SEC;
+    nanos += (jlong)usage.ru_utime.tv_usec * 1000;
+    if (user_sys_cpu_time) {
+      nanos += (jlong)usage.ru_stime.tv_sec * NANOSECS_PER_SEC;
+      nanos += (jlong)usage.ru_stime.tv_usec * 1000;
+    }
+    return nanos;
+  }
+#endif
+  return -1;
 #endif
 }
 
@@ -4289,7 +4557,7 @@ bool os::is_thread_cpu_time_supported() {
 #ifdef __APPLE__
   return true;
 #else
-  return false;
+  return (Bsd::_getcpuclockid != NULL);
 #endif
 }
 
@@ -4387,21 +4655,36 @@ void os::pause() {
 
 static struct timespec* compute_abstime(struct timespec* abstime, jlong millis) {
   if (millis < 0)  millis = 0;
-  struct timeval now;
-  int status = gettimeofday(&now, NULL);
-  assert(status == 0, "gettimeofday");
+
   jlong seconds = millis / 1000;
   millis %= 1000;
   if (seconds > 50000000) { // see man cond_timedwait(3T)
     seconds = 50000000;
   }
-  abstime->tv_sec = now.tv_sec  + seconds;
-  long       usec = now.tv_usec + millis * 1000;
-  if (usec >= 1000000) {
-    abstime->tv_sec += 1;
-    usec -= 1000000;
+
+  if (os::Bsd::supports_monotonic_clock()) {
+    struct timespec now;
+    int status = ::clock_gettime(CLOCK_MONOTONIC, &now);
+    assert_status(status == 0, status, "clock_gettime");
+    abstime->tv_sec = now.tv_sec  + seconds;
+    long nanos = now.tv_nsec + millis * NANOSECS_PER_MILLISEC;
+    if (nanos >= NANOSECS_PER_SEC) {
+      abstime->tv_sec += 1;
+      nanos -= NANOSECS_PER_SEC;
+    }
+    abstime->tv_nsec = nanos;
+  } else {
+    struct timeval now;
+    int status = gettimeofday(&now, NULL);
+    assert(status == 0, "gettimeofday");
+    abstime->tv_sec = now.tv_sec  + seconds;
+    long usec = now.tv_usec + millis * 1000;
+    if (usec >= 1000000) {
+      abstime->tv_sec += 1;
+      usec -= 1000000;
+    }
+    abstime->tv_nsec = usec * 1000;
   }
-  abstime->tv_nsec = usec * 1000;
   return abstime;
 }
 
@@ -4493,7 +4776,7 @@ int os::PlatformEvent::park(jlong millis) {
     status = os::Bsd::safe_cond_timedwait(_cond, _mutex, &abst);
     if (status != 0 && WorkAroundNPTLTimedWaitHang) {
       pthread_cond_destroy (_cond);
-      pthread_cond_init (_cond, NULL) ;
+      pthread_cond_init (_cond, os::Bsd::condAttr()) ;
     }
     assert_status(status == 0 || status == EINTR ||
                   status == ETIMEDOUT,
@@ -4594,32 +4877,50 @@ void os::PlatformEvent::unpark() {
 
 static void unpackTime(struct timespec* absTime, bool isAbsolute, jlong time) {
   assert (time > 0, "convertTime");
+  time_t max_secs = 0;
 
-  struct timeval now;
-  int status = gettimeofday(&now, NULL);
-  assert(status == 0, "gettimeofday");
+  if (!os::Bsd::supports_monotonic_clock() || isAbsolute) {
+    struct timeval now;
+    int status = gettimeofday(&now, NULL);
+    assert(status == 0, "gettimeofday");
 
-  time_t max_secs = now.tv_sec + MAX_SECS;
+    max_secs = now.tv_sec + MAX_SECS;
 
-  if (isAbsolute) {
-    jlong secs = time / 1000;
-    if (secs > max_secs) {
-      absTime->tv_sec = max_secs;
+    if (isAbsolute) {
+      jlong secs = time / 1000;
+      if (secs > max_secs) {
+        absTime->tv_sec = max_secs;
+      } else {
+        absTime->tv_sec = secs;
+      }
+      absTime->tv_nsec = (time % 1000) * NANOSECS_PER_MILLISEC;
+    } else {
+      jlong secs = time / NANOSECS_PER_SEC;
+      if (secs >= MAX_SECS) {
+        absTime->tv_sec = max_secs;
+        absTime->tv_nsec = 0;
+      } else {
+        absTime->tv_sec = now.tv_sec + secs;
+        absTime->tv_nsec = (time % NANOSECS_PER_SEC) + now.tv_usec*1000;
+        if (absTime->tv_nsec >= NANOSECS_PER_SEC) {
+          absTime->tv_nsec -= NANOSECS_PER_SEC;
+          ++absTime->tv_sec; // note: this must be <= max_secs
+        }
+      }
     }
-    else {
-      absTime->tv_sec = secs;
-    }
-    absTime->tv_nsec = (time % 1000) * NANOSECS_PER_MILLISEC;
-  }
-  else {
+  } else {
+    // must be relative using monotonic clock
+    struct timespec now;
+    int status = ::clock_gettime(CLOCK_MONOTONIC, &now);
+    assert_status(status == 0, status, "clock_gettime");
+    max_secs = now.tv_sec + MAX_SECS;
     jlong secs = time / NANOSECS_PER_SEC;
     if (secs >= MAX_SECS) {
       absTime->tv_sec = max_secs;
       absTime->tv_nsec = 0;
-    }
-    else {
+    } else {
       absTime->tv_sec = now.tv_sec + secs;
-      absTime->tv_nsec = (time % NANOSECS_PER_SEC) + now.tv_usec*1000;
+      absTime->tv_nsec = (time % NANOSECS_PER_SEC) + now.tv_nsec;
       if (absTime->tv_nsec >= NANOSECS_PER_SEC) {
         absTime->tv_nsec -= NANOSECS_PER_SEC;
         ++absTime->tv_sec; // note: this must be <= max_secs
@@ -4699,15 +5000,19 @@ void Parker::park(bool isAbsolute, jlong time) {
   jt->set_suspend_equivalent();
   // cleared by handle_special_suspend_equivalent_condition() or java_suspend_self()
 
+  assert(_cur_index == -1, "invariant");
   if (time == 0) {
-    status = pthread_cond_wait (_cond, _mutex) ;
+    _cur_index = REL_INDEX; // arbitrary choice when not timed
+    status = pthread_cond_wait (&_cond[_cur_index], _mutex) ;
   } else {
-    status = os::Bsd::safe_cond_timedwait (_cond, _mutex, &absTime) ;
+    _cur_index = isAbsolute ? ABS_INDEX : REL_INDEX;
+    status = os::Bsd::safe_cond_timedwait (&_cond[_cur_index], _mutex, &absTime) ;
     if (status != 0 && WorkAroundNPTLTimedWaitHang) {
-      pthread_cond_destroy (_cond) ;
-      pthread_cond_init    (_cond, NULL);
+      pthread_cond_destroy (&_cond[_cur_index]) ;
+      pthread_cond_init    (&_cond[_cur_index], isAbsolute ? NULL : os::Bsd::condAttr());
     }
   }
+  _cur_index = -1;
   assert_status(status == 0 || status == EINTR ||
                 status == ETIMEDOUT,
                 status, "cond_timedwait");
@@ -4736,17 +5041,26 @@ void Parker::unpark() {
   s = _counter;
   _counter = 1;
   if (s < 1) {
-     if (WorkAroundNPTLTimedWaitHang) {
-        status = pthread_cond_signal (_cond) ;
-        assert (status == 0, "invariant") ;
+    // thread might be parked
+    if (_cur_index != -1) {
+      // thread is definitely parked
+      if (WorkAroundNPTLTimedWaitHang) {
+        status = pthread_cond_signal (&_cond[_cur_index]);
+        assert (status == 0, "invariant");
         status = pthread_mutex_unlock(_mutex);
-        assert (status == 0, "invariant") ;
-     } else {
+        assert (status == 0, "invariant");
+      } else {
+        // must capture correct index before unlocking
+        int index = _cur_index;
         status = pthread_mutex_unlock(_mutex);
-        assert (status == 0, "invariant") ;
-        status = pthread_cond_signal (_cond) ;
-        assert (status == 0, "invariant") ;
-     }
+        assert (status == 0, "invariant");
+        status = pthread_cond_signal (&_cond[index]);
+        assert (status == 0, "invariant");
+      }
+    } else {
+      pthread_mutex_unlock(_mutex);
+      assert (status == 0, "invariant") ;
+    }
   } else {
     pthread_mutex_unlock(_mutex);
     assert (status == 0, "invariant") ;
@@ -4877,13 +5191,29 @@ bool os::is_headless_jre() {
 
 // Get the default path to the core file
 // Returns the length of the string
-int os::get_core_path(char* buffer, size_t bufferSize) {
-  int n = jio_snprintf(buffer, bufferSize, "/cores");
+int os::get_core_path(char *buffer, size_t bufferSize) {
+#ifdef __APPLE__
+  jio_snprintf(buffer, bufferSize, "/cores/core.%d", current_process_id());
+#else
+  const char *p = get_current_directory(buffer, bufferSize);
 
-  // Truncate if theoretical string was longer than bufferSize
-  n = MIN2(n, (int)bufferSize);
+  if (p == NULL) {
+    assert(p != NULL, "failed to get current directory");
+    return 0;
+  }
 
-  return n;
+  const char *q = getprogname();
+
+  if (q == NULL) {
+    assert(q != NULL, "failed to get progname");
+    return 0;
+  }
+
+  const int n = strlen(buffer);
+
+  jio_snprintf(buffer + n, bufferSize - n, "/%s.core", q);
+#endif
+  return strlen(buffer);
 }
 
 #ifndef PRODUCT

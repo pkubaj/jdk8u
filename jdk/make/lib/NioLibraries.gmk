@@ -77,9 +77,28 @@ ifeq ($(OPENJDK_TARGET_OS), linux)
       UnixNativeDispatcher.c
 endif
 
+ifeq ($(OPENJDK_TARGET_OS), bsd)
+  BUILD_LIBNIO_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libnio/mapfile-$(OPENJDK_TARGET_OS)
+  BUILD_LIBNIO_SRC += $(JDK_TOPDIR)/src/bsd/native/sun/nio/ch
+  BUILD_LIBNIO_FILES += \
+      BsdNativeDispatcher.c \
+      GnomeFileTypeDetector.c \
+      InheritedChannel.c \
+      KQueue.c \
+      KQueueArrayWrapper.c \
+      KQueuePort.c \
+      MagicFileTypeDetector.c \
+      NativeThread.c \
+      PollArrayWrapper.c \
+      UnixAsynchronousServerSocketChannelImpl.c \
+      UnixAsynchronousSocketChannelImpl.c \
+      UnixCopyFile.c \
+      UnixNativeDispatcher.c
+endif
+
 ifeq ($(OPENJDK_TARGET_OS), macosx)
   BUILD_LIBNIO_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libnio/mapfile-$(OPENJDK_TARGET_OS)
-  BUILD_LIBNIO_SRC += $(JDK_TOPDIR)/src/macosx/native/sun/nio/ch
+  BUILD_LIBNIO_SRC += $(JDK_TOPDIR)/src/bsd/native/sun/nio/ch
   BUILD_LIBNIO_FILES += \
       InheritedChannel.c \
       NativeThread.c \
@@ -149,6 +168,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBNIO, \
     LDFLAGS_SUFFIX_windows := jvm.lib ws2_32.lib $(WIN_JAVA_LIB) \
         $(JDK_OUTPUTDIR)/objs/libnet/net.lib \
         advapi32.lib, \
+    LDFLAGS_SUFFIX_bsd := -ljava -lnet -pthread, \
     LDFLAGS_SUFFIX_macosx := -ljava -lnet -pthread -framework CoreFoundation, \
     LDFLAGS_SUFFIX :=, \
     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
@@ -168,6 +188,7 @@ $(BUILD_LIBNIO): $(BUILD_LIBNET)
 ifeq ($(OPENJDK_TARGET_OS_API), posix)
 
   ifeq (, $(filter $(OPENJDK_TARGET_OS), macosx aix))
+  ifeq (, $(filter $(OPENJDK_TARGET_OS_VENDOR), netbsd openbsd))
 
     # Suppress unused parameters required by exported JNI functions.
     SCTP_WERROR := -Werror -Wno-error=unused-parameter
@@ -194,6 +215,7 @@ ifeq ($(OPENJDK_TARGET_OS_API), posix)
         LDFLAGS_SUFFIX_linux := -lpthread $(LIBDL) -ljava -ljvm, \
         LDFLAGS_SUFFIX_posix := -lnio -lnet, \
         LDFLAGS_SUFFIX_solaris := -lsocket -ljava -ljvm -lc, \
+        LDFLAGS_SUFFIX_bsd := -pthread -ljava -ljvm, \
         LDFLAGS_SUFFIX_macosx := -ljava -ljvm, \
         OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libsctp, \
         DEBUG_SYMBOLS := $(DEBUG_ALL_BINARIES)))
@@ -201,5 +223,6 @@ ifeq ($(OPENJDK_TARGET_OS_API), posix)
     BUILD_LIBRARIES += $(BUILD_LIBSCTP)
 
     $(BUILD_LIBSCTP): $(BUILD_LIBNIO)
+  endif
   endif
 endif

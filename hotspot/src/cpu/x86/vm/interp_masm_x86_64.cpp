@@ -650,7 +650,7 @@ void InterpreterMacroAssembler::remove_activation(
 
     bind(loop);
     // check if current entry is used
-    cmpptr(Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()), (int32_t) NULL);
+    cmpptr(Address(c_rarg1, BasicObjectLock::obj_offset_in_bytes()), 0);
     jcc(Assembler::notEqual, exception);
 
     addptr(c_rarg1, entry_size); // otherwise advance to next entry

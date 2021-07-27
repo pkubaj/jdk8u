@@ -306,7 +306,7 @@ LIBAWT_FILES := \
     debug_trace.c \
     debug_util.c
 
-ifneq (, $(filter $(OPENJDK_TARGET_OS), solaris linux aix))
+ifneq (, $(filter $(OPENJDK_TARGET_OS), bsd solaris linux aix))
   LIBAWT_FILES += awt_LoadLibrary.c initIDs.c img_colors.c
 endif
 
@@ -477,6 +477,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBAWT, \
     LDFLAGS_SUFFIX_linux := -ljvm $(LIBM) $(LIBDL) -ljava, \
     LDFLAGS_SUFFIX_solaris := -ljvm $(LIBM) $(LIBDL) -ljava -lc, \
     LDFLAGS_SUFFIX_aix :=-ljvm $(LIBM) $(LIBDL) -ljava -lm,\
+    LDFLAGS_SUFFIX_bsd := -ljvm $(LIBM) -ljava, \
     LDFLAGS_SUFFIX_macosx := -lmlib_image -ljvm $(LIBM) \
         -framework Cocoa \
         -framework OpenGL \
@@ -545,6 +546,16 @@ ifeq ($(findstring $(OPENJDK_TARGET_OS),windows macosx),)
     endif
 
     ifeq ($(OPENJDK_TARGET_OS), linux)
+      ifndef OPENJDK
+        include $(JDK_TOPDIR)/make/closed/xawt.gmk
+      endif
+
+      ifeq ($(DISABLE_XRENDER), true)
+        LIBAWT_XAWT_CFLAGS += -DDISABLE_XRENDER_BY_DEFAULT=true
+      endif
+    endif
+
+    ifeq ($(OPENJDK_TARGET_OS), bsd)
       ifndef OPENJDK
         include $(JDK_TOPDIR)/make/closed/xawt.gmk
       endif
@@ -624,6 +635,11 @@ ifeq ($(findstring $(OPENJDK_TARGET_OS),windows macosx),)
       LIBAWT_XAWT_LDFLAGS += -lpthread
     endif
 
+    ifeq ($(OPENJDK_TARGET_OS), bsd)
+      # To match old build, add this to LDFLAGS instead of suffix.
+      LIBAWT_XAWT_LDFLAGS += -pthread
+    endif
+
     $(eval $(call SetupNativeCompilation,BUILD_LIBAWT_XAWT, \
         LIBRARY := awt_xawt, \
         OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
@@ -638,6 +654,7 @@ ifeq ($(findstring $(OPENJDK_TARGET_OS),windows macosx),)
             $(X_LIBS) $(LIBAWT_XAWT_LDFLAGS) \
             $(call SET_SHARED_LIBRARY_ORIGIN) \
             $(call SET_SHARED_LIBRARY_ORIGIN,/..), \
+        LDFLAGS_bsd := $(call SET_SHARED_LIBRARY_ORIGIN), \
         LDFLAGS_SUFFIX := $(LIBAWT_XAWT_LDFLAGS_SUFFIX), \
         VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
         RC_FLAGS := $(RC_FLAGS) \
@@ -688,6 +705,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBLCMS, \
     LDFLAGS_SUFFIX_macosx := $(LIBM) -lawt -ljava -ljvm, \
     LDFLAGS_SUFFIX_linux := -lm -lawt -ljava -ljvm, \
     LDFLAGS_SUFFIX_aix := -lm -lawt -ljava -ljvm,\
+    LDFLAGS_SUFFIX_bsd := -lm -lawt -ljava -ljvm, \
     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
     RC_FLAGS := $(RC_FLAGS) \
         -D "JDK_FNAME=lcms.dll" \
@@ -845,6 +863,7 @@ ifeq ($(BUILD_HEADLESS), true)
         LDFLAGS_SUFFIX_linux := -ljvm -lawt -lm $(LIBDL) -ljava, \
         LDFLAGS_SUFFIX_aix := -ljvm -lawt -ljava,\
         LDFLAGS_SUFFIX_solaris := $(LIBDL) -ljvm -lawt -lm -ljava $(LIBCXX) -lc, \
+	LDFLAGS_SUFFIX_bsd := -ljvm -lawt -lm -ljava, \
         OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libawt_headless, \
         DEBUG_SYMBOLS := $(DEBUG_ALL_BINARIES)))
 
@@ -927,6 +946,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBFONTMANAGER, \
     LDFLAGS_SUFFIX_linux := -lawt $(LIBM) $(LIBCXX) -ljava -ljvm -lc, \
     LDFLAGS_SUFFIX_solaris := -lawt -lawt_headless -lc $(LIBM) $(LIBCXX) -ljava -ljvm, \
     LDFLAGS_SUFFIX_aix := -lawt -lawt_headless $(LIBM) $(LIBCXX) -ljava -ljvm,\
+    LDFLAGS_SUFFIX_bsd := -lawt $(LIBM) $(LIBCXX) -ljava -ljvm -lc, \
     LDFLAGS_SUFFIX_macosx := -lawt $(LIBM) $(LIBCXX) -undefined dynamic_lookup \
         -ljava -ljvm, \
     LDFLAGS_SUFFIX_windows := $(WIN_JAVA_LIB) advapi32.lib user32.lib gdi32.lib \
@@ -1070,6 +1090,7 @@ else # OPENJDK_TARGET_OS not windows
       OPTIMIZATION := LOW, \
       CFLAGS := $(CFLAGS_JDKLIB), \
       CFLAGS_linux := $(HEADLESS_CFLAG), \
+      CFLAGS_bsd := $(HEADLESS_CFLAG), \
       CFLAGS_macosx := -I$(JDK_TOPDIR)/src/solaris/native/sun/awt, \
       MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libjawt/mapfile-vers, \
       LDFLAGS := $(LDFLAGS_JDKLIB) \
@@ -1078,6 +1099,7 @@ else # OPENJDK_TARGET_OS not windows
       LDFLAGS_SUFFIX_linux := $(JAWT_LIBS) $(LDFLAGS_JDKLIB_SUFFIX), \
       LDFLAGS_SUFFIX_aix := $(JAWT_LIBS) $(LDFLAGS_JDKLIB_SUFFIX),\
       LDFLAGS_SUFFIX_solaris := $(JAWT_LIBS) $(LDFLAGS_JDKLIB_SUFFIX) -lXrender, \
+      LDFLAGS_SUFFIX_bsd := $(JAWT_LIBS) $(LDFLAGS_JDKLIB_SUFFIX), \
       LDFLAGS_SUFFIX_macosx := -Xlinker -rpath -Xlinker @loader_path $(JAWT_LIBS) \
           -framework Cocoa $(LDFLAGS_JDKLIB_SUFFIX), \
       OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libjawt, \
@@ -1143,7 +1165,7 @@ ifndef BUILD_HEADLESS_ONLY
     $(JDK_TOPDIR)/src/share/native/sun/awt/splashscreen
 
   ifeq ($(USE_EXTERNAL_LIBGIF), true)
-    GIFLIB_LDFLAGS := -lgif
+    GIFLIB_LDFLAGS += -lgif
   else
     LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/share/native/sun/awt/giflib
     GIFLIB_CFLAGS := -I$(JDK_TOPDIR)/src/share/native/sun/awt/giflib
@@ -1173,6 +1195,11 @@ ifndef BUILD_HEADLESS_ONLY
     LIBSPLASHSCREEN_splashscreen_png.c_CFLAGS := -x objective-c -O0
     LIBSPLASHSCREEN_splashscreen_sys.m_CFLAGS := -O0
 
+  else ifeq ($(OPENJDK_TARGET_OS), bsd)
+    LIBSPLASHSCREEN_CFLAGS += -DWITH_X11 $(X_CFLAGS) -I$(PACKAGE_PATH)/include
+    ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
+      LIBSPLASHSCREEN_CFLAGS += -DLIBICONV_PLUG
+    endif
   else ifeq ($(OPENJDK_TARGET_OS), windows)
     LIBSPLASHSCREEN_CFLAGS += -DWITH_WIN32
   else
@@ -1192,9 +1219,11 @@ ifndef BUILD_HEADLESS_ONLY
         -framework Foundation \
         -framework Cocoa \
         -framework JavaNativeFoundation
+  else ifeq ($(OPENJDK_TARGET_OS), bsd)
+    LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -L$(PACKAGE_PATH)/lib -liconv -pthread
   else ifeq ($(OPENJDK_TARGET_OS), windows)
     LIBSPLASHSCREEN_LDFLAGS_SUFFIX += kernel32.lib user32.lib gdi32.lib delayimp.lib -DELAYLOAD:user32.dll
-  else
+  else	# .. all other Unixes can use X_LIBS
     LIBSPLASHSCREEN_LDFLAGS_SUFFIX += $(X_LIBS) -lX11 -lXext $(LIBM) -lpthread
   endif
 

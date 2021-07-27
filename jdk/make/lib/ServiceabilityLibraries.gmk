@@ -34,7 +34,7 @@ endif
 ifneq ($(OPENJDK_TARGET_OS), linux)
   LIBATTACH_EXCLUDE_FILES += LinuxVirtualMachine.c
 endif
-ifneq ($(OPENJDK_TARGET_OS), macosx)
+ifeq (,$(findstring $(OPENJDK_TARGET_OS), bsd macosx))
   LIBATTACH_EXCLUDE_FILES += BsdVirtualMachine.c
 endif
 ifneq ($(OPENJDK_TARGET_OS),aix)
@@ -94,6 +94,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBDT_SOCKET, \
         $(call SET_SHARED_LIBRARY_ORIGIN), \
     LDFLAGS_SUFFIX_linux := -lpthread, \
     LDFLAGS_SUFFIX_solaris := -lnsl -lsocket -lc, \
+    LDFLAGS_SUFFIX_bsd := -pthread, \
     LDFLAGS_SUFFIX_windows := $(LDFLAGS_JDKLIB_SUFFIX) -export:jdwpTransport_OnLoad ws2_32.lib, \
     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
     RC_FLAGS := $(RC_FLAGS) \
@@ -245,6 +246,21 @@ ifeq ($(OPENJDK_TARGET_OS), windows)
   LIBINSTRUMENT_CFLAGS += -Dstrcasecmp=stricmp
 endif
 
+ifeq ($(OPENJDK_TARGET_OS), bsd)
+  LIBINSTRUMENT_LDFLAGS_SUFFIX += -L$(PACKAGE_PATH)/lib -liconv $(LIBZ)
+  ifeq ($(BSD_STATIC_LIBJLI), bsd)
+    LIBINSTRUMENT_LDFLAGS += -Xlinker --whole-archive $(JDK_OUTPUTDIR)/objs/libjli_static.a \
+        -Xlinker --no-whole-archive
+  else
+    LIBINSTRUMENT_LDFLAGS += $(call SET_SHARED_LIBRARY_ORIGIN,/jli)
+    LIBINSTRUMENT_LDFLAGS_SUFFIX += -L$(INSTALL_LIBRARIES_HERE)/jli -ljli
+  endif
+  BSD_ICONV_CFLAGS:= -I$(PACKAGE_PATH)/include
+  ifneq ($(OPENJDK_TARGET_OS_VENDOR), openbsd)
+    BSD_ICONV_CFLAGS += -DLIBICONV_PLUG
+  endif
+endif
+
 $(eval $(call SetupNativeCompilation,BUILD_LIBINSTRUMENT, \
     LIBRARY := instrument, \
     OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
@@ -255,6 +271,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBINSTRUMENT, \
     CFLAGS := $(LIBINSTRUMENT_CFLAGS), \
     CFLAGS_debug := -DJPLIS_LOGGING, \
     CFLAGS_release := -DNO_JPLIS_LOGGING, \
+    CFLAGS_bsd := $(BSD_ICONV_CFLAGS), \
     MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libinstrument/mapfile-vers, \
     LDFLAGS := $(LDFLAGS_JDKLIB) \
         $(call SET_SHARED_LIBRARY_ORIGIN) \
@@ -276,7 +293,7 @@ $(eval $(call SetupNativeCompilation,BUILD_LIBINSTRUMENT, \
     OBJECT_DIR := $(LIBINSTRUMENT_DIR), \
     DEBUG_SYMBOLS := true))
 
-ifneq (, $(findstring $(OPENJDK_TARGET_OS), macosx windows aix))
+ifneq (, $(findstring $(OPENJDK_TARGET_OS), $(BSD_STATIC_LIBJLI) macosx windows aix))
   $(BUILD_LIBINSTRUMENT): $(JDK_OUTPUTDIR)/objs/$(LIBRARY_PREFIX)jli_static$(STATIC_LIBRARY_SUFFIX)
 else
   $(BUILD_LIBINSTRUMENT): $(INSTALL_LIBRARIES_HERE)/jli/$(LIBRARY_PREFIX)jli$(SHARED_LIBRARY_SUFFIX)
@@ -306,12 +323,16 @@ ifneq ($(OPENJDK_TARGET_OS), linux)
   BUILD_LIBMANAGEMENT_EXCLUDES += LinuxOperatingSystem.c
 endif
 
+ifneq ($(OPENJDK_TARGET_OS), bsd)
+  BUILD_LIBMANAGEMENT_EXCLUDES += BsdOperatingSystem.c
+endif
+
 ifneq ($(OPENJDK_TARGET_OS), macosx)
   BUILD_LIBMANAGEMENT_EXCLUDES += MacosxOperatingSystem.c
 endif
 
 LIBMANAGEMENT_OPTIMIZATION := HIGH
-ifneq ($(findstring $(OPENJDK_TARGET_OS), solaris linux), )
+ifneq ($(findstring $(OPENJDK_TARGET_OS), solaris linux bsd), )
   ifeq ($(ENABLE_DEBUG_SYMBOLS), true)
     LIBMANAGEMENT_OPTIMIZATION := LOW
   endif
@@ -363,7 +384,7 @@ endif
 BUILD_LIBHPROF_LDFLAGS :=
 
 LIBHPROF_OPTIMIZATION := HIGHEST
-ifneq ($(findstring $(OPENJDK_TARGET_OS), solaris linux), )
+ifneq ($(findstring $(OPENJDK_TARGET_OS), solaris linux bsd), )
   ifeq ($(ENABLE_DEBUG_SYMBOLS), true)
     LIBHPROF_OPTIMIZATION := LOW
   endif

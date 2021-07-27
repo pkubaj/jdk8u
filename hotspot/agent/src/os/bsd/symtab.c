@@ -211,6 +211,10 @@ struct symtab* build_symtab(int fd) {
 
   // Reading of elf header
   struct elf_section *scn_cache = NULL;
+#if defined(ppc64)
+  struct elf_section *opd_sect = NULL;
+  ELF_SHDR *opd = NULL;
+#endif
   int cnt = 0;
   ELF_SHDR* shbuf = NULL;
   ELF_SHDR* cursct = NULL;
@@ -257,6 +261,14 @@ struct symtab* build_symtab(int fd) {
 
     cursct++;
   }
+
+#if defined(ppc64)
+  opd_sect = find_section_by_name(".opd", fd, &ehdr, scn_cache);
+  if (opd_sect != NULL && opd_sect->c_data != NULL && opd_sect->c_shdr != NULL) {
+    // plausibility check
+    opd = opd_sect->c_shdr;
+  }
+#endif
 
   if (!symtab_found && dynsym_found)
      symsection = SHT_DYNSYM;
@@ -322,6 +334,13 @@ struct symtab* build_symtab(int fd) {
         symtab->symbols[j].name   = sym_name;
         symtab->symbols[j].offset = syms->st_value - baseaddr;
         symtab->symbols[j].size   = syms->st_size;
+#if defined(ppc64)
+        if (opd != NULL && *sym_name != '.' &&
+            (opd->sh_addr <= syms->st_value && syms->st_value <= opd->sh_addr + opd->sh_size))
+          symtab->symbols[j].offset =
+            ((ELF_ADDR*)opd_sect->c_data)[(syms->st_value - opd->sh_addr) / sizeof(ELF_ADDR*)] - baseaddr;
+        else
+#endif
 
         key.data = sym_name;
         key.size = strlen(sym_name) + 1;

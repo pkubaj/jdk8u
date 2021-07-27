@@ -23,56 +23,50 @@
  */
 #include "libproc_impl.h"
 
-static const char* alt_root = NULL;
-static int alt_root_len = -1;
-
 #define SA_ALTROOT "SA_ALTROOT"
 
-off_t ltell(int fd) {
-  return lseek(fd, 0, SEEK_CUR);
-}
-
-static void init_alt_root() {
-  if (alt_root_len == -1) {
-    alt_root = getenv(SA_ALTROOT);
-    if (alt_root) {
-      alt_root_len = strlen(alt_root);
-    } else {
-      alt_root_len = 0;
-    }
-  }
-}
-
 int pathmap_open(const char* name) {
+  static const char *alt_root = NULL;
+  static int alt_root_initialized = 0;
+
   int fd;
-  char alt_path[PATH_MAX + 1];
+  char alt_path[PATH_MAX + 1], *alt_path_end;
+  const char *s;
 
-  init_alt_root();
+  if (!alt_root_initialized) {
+    alt_root_initialized = -1;
+    alt_root = getenv(SA_ALTROOT);
+  }
 
-  if (alt_root_len > 0) {
-    strcpy(alt_path, alt_root);
-    strcat(alt_path, name);
+  if (alt_root == NULL) {
+    return open(name, O_RDONLY);
+  }
+
+  strcpy(alt_path, alt_root);
+  alt_path_end = alt_path + strlen(alt_path);
+
+  // Strip path items one by one and try to open file with alt_root prepended
+  s = name;
+  while (1) {
+    strcat(alt_path, s);
+    s += 1;
+
     fd = open(alt_path, O_RDONLY);
     if (fd >= 0) {
       print_debug("path %s substituted for %s\n", alt_path, name);
       return fd;
     }
 
-    if (strrchr(name, '/')) {
-      strcpy(alt_path, alt_root);
-      strcat(alt_path, strrchr(name, '/'));
-      fd = open(alt_path, O_RDONLY);
-      if (fd >= 0) {
-        print_debug("path %s substituted for %s\n", alt_path, name);
-        return fd;
-      }
+    // Linker always put full path to solib to process, so we can rely
+    // on presence of /. If slash is not present, it means, that SOlib doesn't
+    // physically exist (e.g. linux-gate.so) and we fail opening it anyway
+    if ((s = strchr(s, '/')) == NULL) {
+      break;
     }
-  } else {
-    fd = open(name, O_RDONLY);
-    if (fd >= 0) {
-      return fd;
-    }
+
+    *alt_path_end = 0;
   }
+
   return -1;
 }
 
@@ -102,6 +96,10 @@ bool is_debug() {
 }
 
 #ifdef __APPLE__
+off_t ltell(int fd) {
+  return lseek(fd, 0, SEEK_CUR);
+}
+
 // get arch offset in file
 bool get_arch_off(int fd, cpu_type_t cputype, off_t *offset) {
   struct fat_header fatheader;
@@ -327,6 +325,27 @@ sa_thread_info* add_thread_info(struct ps_prochandle* ph, pthread_t pthread_id, 
   return newthr;
 }
 
+void delete_thread_info(struct ps_prochandle* ph, sa_thread_info* thr_to_be_removed) {
+    sa_thread_info* current_thr = ph->threads;
+
+    if (thr_to_be_removed == ph->threads) {
+      ph->threads = ph->threads->next;
+    } else {
+      sa_thread_info* previous_thr;
+      while (current_thr && current_thr != thr_to_be_removed) {
+        previous_thr = current_thr;
+        current_thr = current_thr->next;
+      }
+      if (current_thr == NULL) {
+        print_error("Could not find the thread to be removed");
+        return;
+      }
+      previous_thr->next = current_thr->next;
+    }
+    ph->num_threads--;
+    free(current_thr);
+}
+
 #ifndef __APPLE__
 // struct used for client data from thread_db callback
 struct thread_db_client_data {
@@ -348,6 +367,11 @@ static int thread_db_callback(const td_thrhandle_t *th_p, void *data) {
   }
 
   print_debug("thread_db : pthread %d (lwp %d)\n", ti.ti_tid, ti.ti_lid);
+
+  if (ti.ti_state == TD_THR_UNKNOWN || ti.ti_state == TD_THR_ZOMBIE) {
+    print_debug("Skipping pthread %d (lwp %d)\n", ti.ti_tid, ti.ti_lid);
+    return TD_OK;
+  }
 
   if (ptr->callback(ptr->ph, (pthread_t)ti.ti_tid, ti.ti_lid) != true)
     return TD_ERR;

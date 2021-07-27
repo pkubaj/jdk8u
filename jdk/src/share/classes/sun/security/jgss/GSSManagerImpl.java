@@ -48,6 +48,7 @@ public class GSSManagerImpl extends GSSManager {
                     public Boolean run() {
                             String osname = System.getProperty("os.name");
                             if (osname.startsWith("SunOS") ||
+                                osname.endsWith("BSD") ||
                                 osname.contains("OS X") ||
                                 osname.startsWith("Linux")) {
                                 return new Boolean(System.getProperty

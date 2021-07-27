@@ -29,6 +29,8 @@ OPENJDK_TARGET_OS_INCLUDE = $(INCLUDEDIR)/$(OPENJDK_TARGET_OS)
 
 ifeq ($(OPENJDK_TARGET_OS), windows)
   OPENJDK_TARGET_OS_INCLUDE = $(INCLUDEDIR)/win32
+else ifeq ($(OPENJDK_TARGET_OS), bsd)
+  OPENJDK_TARGET_OS_INCLUDE = $(INCLUDEDIR)/$(shell uname -s | ${TR} "[:upper:]" "[:lower:]")
 else ifeq ($(OPENJDK_TARGET_OS), macosx)
   OPENJDK_TARGET_OS_INCLUDE = $(INCLUDEDIR)/darwin
 endif
@@ -344,23 +346,23 @@ else
 	$(RM) $(@)
         # Now check for other permutations
         ifeq ($(JVM_VARIANT_SERVER), true)
-	  $(PRINTF) "-server KNOWN\n">>$(@)
-	  $(PRINTF) "-client ALIASED_TO -server\n">>$(@)
+	  $(PRINTF) -- "-server KNOWN\n">>$(@)
+	  $(PRINTF) -- "-client ALIASED_TO -server\n">>$(@)
           ifeq ($(JVM_VARIANT_MINIMAL1), true)
-	    $(PRINTF) "-minimal KNOWN\n">>$(@)
+	    $(PRINTF) -- "-minimal KNOWN\n">>$(@)
           endif
         else
           ifeq ($(JVM_VARIANT_CLIENT), true)
-	    $(PRINTF) "-client KNOWN\n">>$(@)
-	    $(PRINTF) "-server ALIASED_TO -client\n">>$(@)
+	    $(PRINTF) -- "-client KNOWN\n">>$(@)
+	    $(PRINTF) -- "-server ALIASED_TO -client\n">>$(@)
             ifeq ($(JVM_VARIANT_MINIMAL1), true)
-	      $(PRINTF) "-minimal KNOWN\n">>$(@)
+	      $(PRINTF) -- "-minimal KNOWN\n">>$(@)
             endif
           else
             ifeq ($(JVM_VARIANT_MINIMAL1), true)
-	      $(PRINTF) "-minimal KNOWN\n">>$(@)
-	      $(PRINTF) "-server ALIASED_TO -minimal\n">>$(@)
-	      $(PRINTF) "-client ALIASED_TO -minimal\n">>$(@)
+	      $(PRINTF) -- "-minimal KNOWN\n">>$(@)
+	      $(PRINTF) -- "-server ALIASED_TO -minimal\n">>$(@)
+	      $(PRINTF) -- "-client ALIASED_TO -minimal\n">>$(@)
             endif
           endif
         endif

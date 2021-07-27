@@ -31,6 +31,12 @@
 #include <dlfcn.h>
 #include <string.h>
 
+#ifdef __FreeBSD__
+#define MAGIC_MAJOR_VERSION "4"
+#else
+#define MAGIC_MAJOR_VERSION "1"
+#endif
+
 #define MAGIC_MIME_TYPE 0x000010 /* Return the MIME type */
 
 typedef struct magic_set magic_t;
@@ -54,7 +60,7 @@ Java_sun_nio_fs_MagicFileTypeDetector_initialize0
 {
     magic_handle = dlopen("libmagic.so", RTLD_LAZY);
     if (magic_handle == NULL) {
-        magic_handle = dlopen("libmagic.so.1", RTLD_LAZY);
+        magic_handle = dlopen("libmagic.so." MAGIC_MAJOR_VERSION, RTLD_LAZY);
         if (magic_handle == NULL) {
             return JNI_FALSE;
         }

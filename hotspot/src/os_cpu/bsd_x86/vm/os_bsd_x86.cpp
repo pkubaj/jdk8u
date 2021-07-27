@@ -74,6 +74,16 @@
 #ifndef __OpenBSD__
 # include <ucontext.h>
 #endif
+#ifdef __FreeBSD__
+# include <sys/sysctl.h>
+# include <sys/procctl.h>
+#ifndef PROC_STACKGAP_STATUS
+#define PROC_STACKGAP_STATUS	18
+#endif
+#ifndef PROC_STACKGAP_DISABLE
+#define PROC_STACKGAP_DISABLE	0x0002
+#endif
+#endif /* __FreeBSD__ */
 
 #if !defined(__APPLE__) && !defined(__NetBSD__)
 # include <pthread_np.h>
@@ -281,11 +291,11 @@ PRAGMA_FORMAT_MUTE_WARNINGS_FOR_GCC
 address os::current_stack_pointer() {
 #if defined(__clang__) || defined(__llvm__)
   register void *esp;
-  __asm__("mov %%"SPELL_REG_SP", %0":"=r"(esp));
+  __asm__("mov %%" SPELL_REG_SP ", %0" : "=r" (esp));
   return (address) esp;
 #elif defined(SPARC_WORKS)
   register void *esp;
-  __asm__("mov %%"SPELL_REG_SP", %0":"=r"(esp));
+  __asm__("mov %%" SPELL_REG_SP ", %0" : "=r" (esp));
   return (address) ((char*)esp + sizeof(long)*2);
 #else
   register void *esp __asm__ (SPELL_REG_SP);
@@ -368,7 +378,7 @@ frame os::get_sender_for_C_frame(frame* fr) {
 intptr_t* _get_previous_fp() {
 #if defined(SPARC_WORKS) || defined(__clang__) || defined(__llvm__)
   register intptr_t **ebp;
-  __asm__("mov %%"SPELL_REG_FP", %0":"=r"(ebp));
+  __asm__("mov %%" SPELL_REG_FP ", %0" : "=r" (ebp));
 #else
   register intptr_t **ebp __asm__ (SPELL_REG_FP);
 #endif
@@ -470,6 +480,55 @@ JVM_handle_bsd_signal(int sig,
     // Handle ALL stack overflow variations here
     if (sig == SIGSEGV || sig == SIGBUS) {
       address addr = (address) info->si_addr;
+#ifdef __FreeBSD__
+      /*
+       * Determine whether the kernel stack guard pages have been disabled
+       */
+      int status = 0;
+      int ret = procctl(P_PID, getpid(), PROC_STACKGAP_STATUS, &status);
+
+      /*
+       * Check if the call to procctl(2) failed or the stack guard is not
+       * disabled.  Either way, we'll then attempt a workaround.
+       */
+      if (ret == -1 || !(status & PROC_STACKGAP_DISABLE)) {
+          /*
+           * Try to work around the problems caused on FreeBSD where the kernel
+           * may place guard pages above JVM guard pages and prevent the Java
+           * thread stacks growing into the JVM guard pages.  The work around
+           * is to determine how many such pages there may be and round down the
+           * fault address so that tests of whether it is in the JVM guard zone
+           * succeed.
+           *
+           * Note that this is a partial workaround at best since the normally
+           * the JVM could then unprotect the reserved area to allow a critical
+           * section to complete.  This is not possible if the kernel has
+           * placed guard pages below the reserved area.
+           *
+           * This also suffers from the problem that the
+           * security.bsd.stack_guard_page sysctl is dynamic and may have
+           * changed since the stack was allocated.  This is likely to be rare
+           * in practice though.
+           *
+           * What this does do is prevent the JVM crashing on FreeBSD and
+           * instead throwing a StackOverflowError when infinite recursion
+           * is attempted, which is the expected behaviour.  Due to it's
+           * limitations though, objects may be in unexpected states when
+           * this occurs.
+           *
+           * A better way to avoid these problems is either to be on a new
+           * enough version of FreeBSD (one that has PROC_STACKGAP_CTL) or set
+           * security.bsd.stack_guard_page to zero.
+           */
+          int guard_pages = 0;
+          size_t size = sizeof(guard_pages);
+          if (sysctlbyname("security.bsd.stack_guard_page",
+                           &guard_pages, &size, NULL, 0) == 0 &&
+              guard_pages > 0) {
+            addr -= guard_pages * os::vm_page_size();
+          }
+      }
+#endif
 
       // check if fault address is within thread stack
       if (addr < thread->stack_base() &&
@@ -594,7 +653,11 @@ JVM_handle_bsd_signal(int sig,
           stub = SharedRuntime::continuation_for_implicit_exception(thread, pc, SharedRuntime::IMPLICIT_NULL);
       }
     } else if (thread->thread_state() == _thread_in_vm &&
+#ifdef __FreeBSD__
+               (sig == SIGBUS || sig == SIGSEGV) && 
+#else
                sig == SIGBUS && /* info->si_code == BUS_OBJERR && */
+#endif
                thread->doing_unsafe_access()) {
         stub = StubRoutines::handler_for_unsafe_access();
     }

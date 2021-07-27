@@ -1306,7 +1306,7 @@ public class ExtendedCharsets
         String osName = AccessController.doPrivileged(
             new GetPropertyAction("os.name"));
         if ("SunOS".equals(osName) || "Linux".equals(osName) || "AIX".equals(osName)
-               || osName.contains("OS X")) {
+               || osName.endsWith("BSD") || osName.contains("OS X")) {
             charset("x-COMPOUND_TEXT", "COMPOUND_TEXT",
                     new String[] {
                         "COMPOUND_TEXT",        // JDK historical

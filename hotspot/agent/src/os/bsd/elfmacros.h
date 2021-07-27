@@ -34,6 +34,7 @@
 #define ELF_SYM         Elf64_Sym
 #define ELF_DYN         Elf64_Dyn
 #define ELF_ADDR        Elf64_Addr
+#define ELF_AUXV        Elf64_Auxinfo
 
 #ifndef ELF_ST_TYPE
 #define ELF_ST_TYPE     ELF64_ST_TYPE
@@ -47,6 +48,7 @@
 #define ELF_SYM         Elf32_Sym
 #define ELF_DYN         Elf32_Dyn
 #define ELF_ADDR        Elf32_Addr
+#define ELF_AUXV        Elf32_Auxinfo
 
 #ifndef ELF_ST_TYPE
 #define ELF_ST_TYPE     ELF32_ST_TYPE

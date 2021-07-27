@@ -50,6 +50,7 @@ JVM_ENTRY_NO_ENV(void*, JVM_RegisterSignal(jint sig, void* handler))
     case INTERRUPT_SIGNAL:
     case SIGFPE:
     case SIGILL:
+    case SIGBUS:
     case SIGSEGV:
 
     /* The following signal is used by the VM to dump thread stacks unless
@@ -110,71 +111,29 @@ JVM_ENTRY_NO_ENV(jboolean, JVM_RaiseSignal(jint sig))
 JVM_END
 
 /*
-  All the defined signal names for Bsd.
+  All the defined signal names for BSD are defined by sys_signame[].
 
   NOTE that not all of these names are accepted by our Java implementation
 
   Via an existing claim by the VM, sigaction restrictions, or
   the "rules of Unix" some of these names will be rejected at runtime.
   For example the VM sets up to handle USR1, sigaction returns EINVAL for
-  STOP, and Bsd simply doesn't allow catching of KILL.
+  STOP, and BSD simply doesn't allow catching of KILL.
 
   Here are the names currently accepted by a user of sun.misc.Signal with
   1.4.1 (ignoring potential interaction with use of chaining, etc):
 
-    HUP, INT, TRAP, ABRT, IOT, BUS, USR2, PIPE, ALRM, TERM, STKFLT,
-    CLD, CHLD, CONT, TSTP, TTIN, TTOU, URG, XCPU, XFSZ, VTALRM, PROF,
-    WINCH, POLL, IO, PWR, SYS
-
+      HUP, INT, TRAP, ABRT, EMT, SYS, PIPE, ALRM, TERM, URG, TSTP, CONT,
+      CHLD, TTIN, TTOU, IO, XCPU, XFSZ, VTALRM, PROF, WINCH, INFO, USR2
 */
-
-struct siglabel {
-  const char *name;
-  int   number;
-};
-
-struct siglabel siglabels[] = {
-  /* derived from /usr/include/bits/signum.h on RH7.2 */
-   "HUP",       SIGHUP,         /* Hangup (POSIX).  */
-  "INT",        SIGINT,         /* Interrupt (ANSI).  */
-  "QUIT",       SIGQUIT,        /* Quit (POSIX).  */
-  "ILL",        SIGILL,         /* Illegal instruction (ANSI).  */
-  "TRAP",       SIGTRAP,        /* Trace trap (POSIX).  */
-  "ABRT",       SIGABRT,        /* Abort (ANSI).  */
-  "EMT",        SIGEMT,         /* EMT trap  */
-  "FPE",        SIGFPE,         /* Floating-point exception (ANSI).  */
-  "KILL",       SIGKILL,        /* Kill, unblockable (POSIX).  */
-  "BUS",        SIGBUS,         /* BUS error (4.2 BSD).  */
-  "SEGV",       SIGSEGV,        /* Segmentation violation (ANSI).  */
-  "SYS",        SIGSYS,         /* Bad system call. Only on some Bsden! */
-  "PIPE",       SIGPIPE,        /* Broken pipe (POSIX).  */
-  "ALRM",       SIGALRM,        /* Alarm clock (POSIX).  */
-  "TERM",       SIGTERM,        /* Termination (ANSI).  */
-  "URG",        SIGURG,         /* Urgent condition on socket (4.2 BSD).  */
-  "STOP",       SIGSTOP,        /* Stop, unblockable (POSIX).  */
-  "TSTP",       SIGTSTP,        /* Keyboard stop (POSIX).  */
-  "CONT",       SIGCONT,        /* Continue (POSIX).  */
-  "CHLD",       SIGCHLD,        /* Child status has changed (POSIX).  */
-  "TTIN",       SIGTTIN,        /* Background read from tty (POSIX).  */
-  "TTOU",       SIGTTOU,        /* Background write to tty (POSIX).  */
-  "IO",         SIGIO,          /* I/O now possible (4.2 BSD).  */
-  "XCPU",       SIGXCPU,        /* CPU limit exceeded (4.2 BSD).  */
-  "XFSZ",       SIGXFSZ,        /* File size limit exceeded (4.2 BSD).  */
-  "VTALRM",     SIGVTALRM,      /* Virtual alarm clock (4.2 BSD).  */
-  "PROF",       SIGPROF,        /* Profiling alarm clock (4.2 BSD).  */
-  "WINCH",      SIGWINCH,       /* Window size change (4.3 BSD, Sun).  */
-  "INFO",       SIGINFO,        /* Information request.  */
-  "USR1",       SIGUSR1,        /* User-defined signal 1 (POSIX).  */
-  "USR2",       SIGUSR2         /* User-defined signal 2 (POSIX).  */
-  };
 
 JVM_ENTRY_NO_ENV(jint, JVM_FindSignal(const char *name))
 
   /* find and return the named signal's number */
 
-  for(uint i=0; i<ARRAY_SIZE(siglabels); i++)
-    if(!strcmp(name, siglabels[i].name))
-      return siglabels[i].number;
+  for (int i = 1; i < NSIG; i++)
+    if (strcasecmp(name, sys_signame[i]) == 0)
+      return i;
 
   return -1;
 
@@ -182,11 +141,14 @@ JVM_END
 
 // used by os::exception_name()
 extern bool signal_name(int signo, char* buf, size_t len) {
-  for(uint i = 0; i < ARRAY_SIZE(siglabels); i++) {
-    if (signo == siglabels[i].number) {
-      jio_snprintf(buf, len, "SIG%s", siglabels[i].name);
-      return true;
-    }
-  }
-  return false;
+  if (signo <= 0 || signo >= NSIG)
+    return false;
+  char signame[8];
+  const char *s = sys_signame[signo];
+  uint i;
+  for (i = 0; i < sizeof(signame) - 1 && s[i] != '\0'; i++)
+    signame[i] = toupper(s[i]);
+  signame[i] = '\0';
+  jio_snprintf(buf, len, "SIG%s", signame);
+  return true;
 }

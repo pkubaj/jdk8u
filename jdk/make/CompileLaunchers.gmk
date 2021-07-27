@@ -49,7 +49,7 @@ else
   ORIGIN_ROOT := /..
 endif
 
-ifeq ($(OPENJDK_TARGET_OS), macosx)
+ifneq ($(findstring $(OPENJDK_TARGET_OS), $(BSD_STATIC_LIBJLI) macosx), )
   ORIGIN_ARG := $(call SET_EXECUTABLE_ORIGIN)
 else
   ORIGIN_ARG := $(call SET_EXECUTABLE_ORIGIN,$(ORIGIN_ROOT)/lib$(OPENJDK_TARGET_CPU_LIBDIR)/jli)
@@ -60,7 +60,7 @@ endif
 # System.loadLibrary("jawt") first. This was the behaviour described in the
 # devloper documentation of JAWT and what worked with OpenJDK6.
 #
-ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris), )
+ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris bsd), )
   ORIGIN_ARG += $(call SET_EXECUTABLE_ORIGIN,$(ORIGIN_ROOT)/lib$(OPENJDK_TARGET_CPU_LIBDIR))
 endif
 
@@ -89,6 +89,18 @@ define SetupLauncher
 
   $1_LDFLAGS := $3
   $1_LDFLAGS_SUFFIX :=
+  ifeq ($(OPENJDK_TARGET_OS), bsd)
+    ifeq ($(BSD_STATIC_LIBJLI), bsd)
+      $1_LDFLAGS += -Wl,--whole-archive $(JDK_OUTPUTDIR)/objs/libjli_static.a \
+          -Wl,--no-whole-archive
+      $1_LDFLAGS_SUFFIX += -pthread
+    else
+      $1_LDFLAGS += \
+          $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX))
+      $1_LDFLAGS_SUFFIX += -L$(JDK_OUTPUTDIR)/lib$(OPENJDK_TARGET_CPU_LIBDIR)/jli -ljli -pthread
+    endif
+  endif
+
   ifeq ($(OPENJDK_TARGET_OS), macosx)
     $1_PLIST_FILE := Info-cmdline.plist
     ifneq ($(11), )
@@ -162,6 +174,7 @@ define SetupLauncher
           -DLIBARCHNAME='"$(OPENJDK_TARGET_CPU_LEGACY)"' \
           -DLAUNCHER_NAME='"$(LAUNCHER_NAME)"' \
           -DPROGNAME='"$1"' $(DPACKAGEPATH) \
+          -DPACKAGE_PATH='"$(PACKAGE_PATH)"' \
           $2, \
       CFLAGS_solaris := -KPIC, \
       LDFLAGS := $(LDFLAGS_JDKEXE) \
@@ -194,7 +207,7 @@ define SetupLauncher
 
   BUILD_LAUNCHERS += $$(BUILD_LAUNCHER_$1)
 
-  ifneq (,$(filter $(OPENJDK_TARGET_OS), macosx aix))
+  ifneq (,$(filter $(OPENJDK_TARGET_OS), $(BSD_STATIC_LIBJLI) macosx aix))
     $$(BUILD_LAUNCHER_$1): $(JDK_OUTPUTDIR)/objs/libjli_static.a
   endif
 
@@ -517,6 +530,7 @@ $(eval $(call SetupNativeCompilation,BUILD_UNPACKEXE, \
     CFLAGS_release := -DPRODUCT, \
     CFLAGS_linux := -fPIC, \
     CFLAGS_solaris := -KPIC, \
+    CFLAGS_bsd := -fPIC, \
     CFLAGS_macosx := -fPIC, \
     MAPFILE := $(UNPACK_MAPFILE),\
     LDFLAGS := $(UNPACKEXE_ZIPOBJS), \
@@ -591,7 +605,7 @@ ifeq ($(OPENJDK_TARGET_OS), solaris)
   endif
 endif
 
-ifeq ($(OPENJDK_TARGET_OS), linux)
+ifneq ($(findstring $(OPENJDK_TARGET_OS), linux bsd), )
   BUILD_JEXEC := 1
 endif # OPENJDK_TARGET_OS
 
@@ -627,6 +641,7 @@ ifneq ($(BUILD_JEXEC_SRC), )
           $(BUILD_JEXEC_INC), \
       CFLAGS_linux := -fPIC, \
       CFLAGS_solaris := -KPIC, \
+      CFLAGS_bsd := -fPIC, \
       LDFLAGS := $(LDFLAGS_JDKEXE) \
           $(call SET_SHARED_LIBRARY_NAME,$(LIBRARY_PREFIX)$(SHARED_LIBRARY_SUFFIX)), \
       OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/jexec_obj, \
@@ -643,10 +658,7 @@ endif
 # The java-rmi.cgi script in bin/ only gets delivered in certain situations
 #
 JAVA_RMI_CGI := $(JDK_OUTPUTDIR)/bin$(OUTPUT_SUBDIR)/java-rmi.cgi
-ifeq ($(OPENJDK_TARGET_OS), linux)
-  BUILD_LAUNCHERS += $(JAVA_RMI_CGI)
-endif
-ifeq ($(OPENJDK_TARGET_OS), solaris)
+ifneq ($(findstring $(OPENJDK_TARGET_OS), linux solaris bsd), )
   BUILD_LAUNCHERS += $(JAVA_RMI_CGI)
 endif
 
@@ -674,7 +686,7 @@ BUILD_JSPAWNHELPER_DST_DIR := $(JDK_OUTPUTDIR)/lib$(OPENJDK_TARGET_CPU_LIBDIR)
 LINK_JSPAWNHELPER_OBJECTS := $(JDK_OUTPUTDIR)/objs/libjava/childproc.o
 LINK_JSPAWNHELPER_FLAGS :=
 
-ifneq ($(findstring $(OPENJDK_TARGET_OS), macosx solaris aix), )
+ifneq ($(findstring $(OPENJDK_TARGET_OS), bsd macosx solaris aix), )
   BUILD_JSPAWNHELPER := 1
 endif
 

@@ -194,7 +194,7 @@ public class ExecutionEnvironment extends TestHelper {
 
         Map<String, String> env = new HashMap<>();
 
-        if (TestHelper.isLinux || TestHelper.isMacOSX || TestHelper.isAIX) {
+        if (TestHelper.isLinux || TestHelper.isBSD || TestHelper.isMacOSX || TestHelper.isAIX) {
             for (String x : LD_PATH_STRINGS) {
                 String pairs[] = x.split("=");
                 env.put(pairs[0], pairs[1]);

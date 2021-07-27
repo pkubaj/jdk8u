@@ -69,7 +69,7 @@ public class RunpathTest extends TestHelper {
     }
 
     public static void main(String... args) throws Exception {
-        if (isSolaris || isLinux) {
+        if (isSolaris || isLinux || isBSD) {
             RunpathTest rp = new RunpathTest();
             rp.testRpath();
         }

@@ -1964,7 +1964,8 @@ jint Arguments::set_aggressive_heap_flags() {
     FLAG_SET_CMDLINE(uintx, MaxNewSize, NewSize);
   }
 
-#ifndef _ALLBSD_SOURCE  // UseLargePages is not yet supported on BSD.
+#if defined(_ALLBSD_SOURCE) && !defined(__FreeBSD__)
+  // UseLargePages is not yet supported on all BSD.
   FLAG_SET_DEFAULT(UseLargePages, true);
 #endif
 
@@ -4027,7 +4028,8 @@ jint Arguments::parse(const JavaVMInitArgs* args) {
             hotspotrc, hotspotrc);
   }
 
-#ifdef _ALLBSD_SOURCE  // UseLargePages is not yet supported on BSD.
+#if defined(_ALLBSD_SOURCE) && !defined(__FreeBSD__)
+  // UseLargePages is not yet supported on all BSD.
   UNSUPPORTED_OPTION(UseLargePages, "-XX:+UseLargePages");
 #endif
 

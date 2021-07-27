@@ -338,7 +338,7 @@ define SetupLogging
     # (and causing a crash on Cygwin).
     # Default shell seems to always be /bin/sh. Must override with bash to get this to work on Solaris.
     # Only use time if it's GNU time which supports format and output file.
-    WRAPPER_SHELL:=/bin/bash $$(SRC_ROOT)/common/bin/shell-tracer.sh $$(if $$(findstring yes,$$(IS_GNU_TIME)),$$(TIME),-) $$(OUTPUT_ROOT)/build-trace-time.log /bin/bash
+    WRAPPER_SHELL:=bash $$(SRC_ROOT)/common/bin/shell-tracer.sh $$(if $$(findstring yes,$$(IS_GNU_TIME)),$$(TIME),-) $$(OUTPUT_ROOT)/build-trace-time.log bash
     SHELL=$$(warning $$(if $$@,Building $$@,Running shell command) $$(if $$<, (from $$<))$$(if $$?, ($$(wordlist 1, 20, $$?) $$(if $$(wordlist 21, 22, $$?), ... [in total $$(words $$?) files]) newer)))$$(WRAPPER_SHELL)
   endif
   # Never remove warning messages; this is just for completeness
@@ -365,8 +365,8 @@ $(eval $(call SetupLogging))
 
 # This is to be called by all SetupFoo macros
 define LogSetupMacroEntry
-  $(if $(27),$(error Internal makefile error: Too many arguments to LogSetupMacroEntry, please update MakeBase.gmk))
-  $(if $(findstring $(LOG_LEVEL),debug trace), $(info $1 $(foreach i,2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26,$(if $($i),$(NEWLINE) $(strip [$i] $($i))))))
+  $(if $(30),$(error Internal makefile error: Too many arguments to LogSetupMacroEntry, please update MakeBase.gmk))
+  $(if $(findstring $(LOG_LEVEL),debug trace), $(info $1 $(foreach i,2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29,$(if $($i),$(NEWLINE) $(strip [$i] $($i))))))
 endef
 
 # Make directory without forking mkdir if not needed

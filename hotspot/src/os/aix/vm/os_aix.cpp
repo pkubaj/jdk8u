@@ -5254,6 +5254,10 @@ int os::get_core_path(char* buffer, size_t bufferSize) {
     return 0;
   }
 
+  const int n = strlen(buffer);
+
+  jio_snprintf(buffer + n, bufferSize - n, "/core or core.%d", current_process_id());
+
   return strlen(buffer);
 }
 

@@ -145,11 +145,21 @@ ifeq ($(USE_CLANG), true)
     # level specific PCH files for the opt build and use them here, but
     # it's probably not worth the effort as long as only a few files
     # need this special handling.
-    PCH_FLAG/loopTransform.o = $(PCH_FLAG/NO_PCH)
     PCH_FLAG/sharedRuntimeTrig.o = $(PCH_FLAG/NO_PCH)
     PCH_FLAG/sharedRuntimeTrans.o = $(PCH_FLAG/NO_PCH)
-    PCH_FLAG/unsafe.o = $(PCH_FLAG/NO_PCH)
-  
+
+    ifeq ($(shell expr $(CC_VER_MAJOR) = 4 \& $(CC_VER_MINOR) = 2), 1)
+      PCH_FLAG/loopTransform.o = $(PCH_FLAG/NO_PCH)
+      PCH_FLAG/unsafe.o = $(PCH_FLAG/NO_PCH)
+    endif
+    ifeq ($(shell expr $(CC_VER_MAJOR) = 6 \& $(CC_VER_MINOR) = 0), 1)
+      PCH_FLAG/unsafe.o = $(PCH_FLAG/NO_PCH)
+    endif
+    ifeq ($(shell expr $(CC_VER_MAJOR) = 10 \| $(CC_VER_MAJOR) = 11), 1)
+      ifeq ($(BUILDARCH), i486)
+        PCH_FLAG/bitMap.o = $(PCH_FLAG/NO_PCH)
+      endif
+    endif
   endif
 else # ($(USE_CLANG), true)
   # check for precompiled headers support
@@ -167,6 +177,9 @@ endif
 ifeq ($(USE_PRECOMPILED_HEADER),0)
   CFLAGS += -DDONT_USE_PRECOMPILED_HEADER
 endif
+
+# Allow for where third party packages are located
+CFLAGS+= -DPACKAGE_PATH=\"$(PACKAGE_PATH)\"
 
 #------------------------------------------------------------------------
 # Compiler flags
@@ -197,22 +210,29 @@ ifeq ($(USE_CLANG),)
     CFLAGS += -fvisibility=hidden
   endif
 else
+  ifneq ($(OS_VENDOR), Darwin)
+    CFLAGS += -pthread
+  endif
   CFLAGS += -fvisibility=hidden
 endif
 
 ifeq ($(USE_CLANG), true)
-  # Before Clang 3.1, we had to pass the stack alignment specification directly to llvm with the help of '-mllvm'
-  # Starting with version 3.1, Clang understands the '-mstack-alignment' (and rejects '-mllvm -stack-alignment')
-  ifneq "$(shell expr \( $(CC_VER_MAJOR) \> 3 \) \| \( \( $(CC_VER_MAJOR) = 3 \) \& \( $(CC_VER_MINOR) \>= 1 \) \))" "0"
-    STACK_ALIGNMENT_OPT = -mno-omit-leaf-frame-pointer -mstack-alignment=16
-  else
-    STACK_ALIGNMENT_OPT = -mno-omit-leaf-frame-pointer -mllvm -stack-alignment=16
+  STACK_ALIGNMENT_OPT = -mno-omit-leaf-frame-pointer
+  ifeq ($(OS_VENDOR), Darwin)
+    # Before Clang 3.1, we had to pass the stack alignment specification directly to llvm with the help of '-mllvm'
+    # Starting with version 3.1, Clang understands the '-mstack-alignment' (and rejects '-mllvm -stack-alignment')
+    ifneq "$(shell expr \( $(CC_VER_MAJOR) \> 3 \) \| \( \( $(CC_VER_MAJOR) = 3 \) \& \( $(CC_VER_MINOR) \>= 1 \) \))" "0"
+      STACK_ALIGNMENT_OPT += -mstack-alignment=16
+    else
+      STACK_ALIGNMENT_OPT += -mllvm -stack-alignment=16
+    endif
   endif
 endif
 
 ARCHFLAG = $(ARCHFLAG/$(BUILDARCH))
 ARCHFLAG/i486    = -m32 -march=i586
 ARCHFLAG/amd64   = -m64 $(STACK_ALIGNMENT_OPT)
+ARCHFLAG/aarch64 =
 ARCHFLAG/ia64    =
 ARCHFLAG/sparc   = -m32 -mcpu=v9
 ARCHFLAG/sparcv9 = -m64 -mcpu=v9
@@ -228,6 +248,10 @@ CFLAGS     += $(ARCHFLAG)
 AOUT_FLAGS += $(ARCHFLAG)
 LFLAGS     += $(ARCHFLAG)
 ASFLAGS    += $(ARCHFLAG)
+
+ifeq ($(DEBUG_BINARIES), true)
+  ASFLAGS    += $(ASFLAGS_DEBUG_SYMBOLS)
+endif
 
 ifdef E500V2
 CFLAGS += -DE500V2
@@ -258,6 +282,13 @@ ifeq ($(USE_CLANG), true)
 #  WARNINGS_ARE_ERRORS += -Wno-tautological-constant-out-of-range-compare
   WARNINGS_ARE_ERRORS += -Wno-delete-non-virtual-dtor -Wno-deprecated -Wno-format -Wno-dynamic-class-memaccess
   WARNINGS_ARE_ERRORS += -Wno-empty-body
+  WARNINGS_ARE_ERRORS += -Wno-format-nonliteral
+  ifneq "$(shell expr \( $(CC_VER_MAJOR) \>= 6 \))" "0"
+    WARNINGS_ARE_ERRORS += -Wno-undefined-bool-conversion -Wno-expansion-to-defined
+    WARNINGS_ARE_ERRORS += -Wno-undefined-var-template
+  endif
+else
+  WARNINGS_ARE_ERRORS += -Wno-format
 endif
 
 WARNING_FLAGS = -Wpointer-arith -Wsign-compare -Wundef -Wunused-function -Wformat=2
@@ -270,7 +301,7 @@ ifeq ($(USE_CLANG),)
   endif
 endif
 
-CFLAGS_WARN/DEFAULT = $(WARNINGS_ARE_ERRORS) $(WARNING_FLAGS)
+CFLAGS_WARN/DEFAULT = $(WARNING_FLAGS) $(WARNINGS_ARE_ERRORS)
 # Special cases
 CFLAGS_WARN/BYFILE = $(CFLAGS_WARN/$@)$(CFLAGS_WARN/DEFAULT$(CFLAGS_WARN/$@)) 
 # XXXDARWIN: for _dyld_bind_fully_image_containing_address
@@ -316,6 +347,14 @@ ifeq ($(USE_CLANG), true)
   ifeq ($(shell expr $(CC_VER_MAJOR) = 4 \& $(CC_VER_MINOR) = 2), 1)
     OPT_CFLAGS/loopTransform.o += $(OPT_CFLAGS/NOOPT)
     OPT_CFLAGS/unsafe.o += -O1
+  endif
+  ifeq ($(shell expr $(CC_VER_MAJOR) = 6 \& $(CC_VER_MINOR) = 0), 1)
+    OPT_CFLAGS/unsafe.o += -O1
+  endif
+  ifeq ($(shell expr $(CC_VER_MAJOR) = 10 \| $(CC_VER_MAJOR) = 11), 1)
+    ifeq ($(BUILDARCH), i486)
+      OPT_CFLAGS/bitMap.o += -O1
+    endif
   endif
 else
   # 6835796. Problem in GCC 4.3.0 with mulnode.o optimized compilation.
@@ -378,6 +417,8 @@ endif
 # Use $(MAPFLAG:FILENAME=real_file_name) to specify a map file.
 MAPFLAG = -Xlinker --version-script=FILENAME
 
+LDFLAGS_NO_EXEC_STACK="-Wl,-z,noexecstack"
+
 #
 # Shared Library
 #
@@ -420,53 +461,45 @@ ifeq ($(USE_CLANG), true)
   CFLAGS += -flimit-debug-info
 endif
 
+# Use the stabs format for debugging information (this is the default
+# on gcc-2.91). It's good enough, has all the information about line
+# numbers and local variables, and libjvm.so is only about 16M.
+# Change this back to "-g" if you want the most expressive format.
+# (warning: that could easily inflate libjvm.so to 150M!)
+# Note: The Itanium gcc compiler crashes when using -gstabs.
+# Don't use stabs on gcc>=4.8 because it is incompatible with
+# pre-compiled-headers
+ifeq ($(USE_CLANG), true)
+  # Clang doesn't understand -gstabs
+  STABS_CFLAGS += -g
+else
+  ifeq "$(shell expr \( $(CC_VER_MAJOR) \> 4 \) \| \( \( $(CC_VER_MAJOR) = 4 \) \& \( $(CC_VER_MINOR) \>= 8 \) \))" "1"
+    # GCC >= 4.8
+    STABS_CFLAGS += -g
+  else
+    STABS_CFLAGS/ia64  = -g
+    STABS_CFLAGS/arm   = -g
+    STABS_CFLAGS/ppc   = -g
+    STABS_CFLAGS/amd64 = -g
+    STABS_CFLAGS/aarch64 = -g
+    ifeq ($(STABS_CFLAGS/$(BUILDARCH)),)
+      STABS_CFLAGS += -gstabs
+    else
+      STABS_CFLAGS += $(STABS_CFLAGS/$(BUILDARCH))
+    endif
+  endif
+endif
+
 # DEBUG_BINARIES uses full -g debug information for all configs
 ifeq ($(DEBUG_BINARIES), true)
   CFLAGS += -g
 else
-  # Use the stabs format for debugging information (this is the default
-  # on gcc-2.91). It's good enough, has all the information about line
-  # numbers and local variables, and libjvm.so is only about 16M.
-  # Change this back to "-g" if you want the most expressive format.
-  # (warning: that could easily inflate libjvm.so to 150M!)
-  # Note: The Itanium gcc compiler crashes when using -gstabs.
-  DEBUG_CFLAGS/ia64  = -g
-  DEBUG_CFLAGS/amd64 = -g
-  DEBUG_CFLAGS/arm   = -g
-  DEBUG_CFLAGS/ppc   = -g
-  DEBUG_CFLAGS += $(DEBUG_CFLAGS/$(BUILDARCH))
-  ifeq ($(DEBUG_CFLAGS/$(BUILDARCH)),)
-  DEBUG_CFLAGS += -gstabs
-  endif
+  DEBUG_CFLAGS += ${STABS_CFLAGS}
   
   ifeq ($(ENABLE_FULL_DEBUG_SYMBOLS),1)
-    FASTDEBUG_CFLAGS/ia64  = -g
-    FASTDEBUG_CFLAGS/amd64 = -g
-    FASTDEBUG_CFLAGS/arm   = -g
-    FASTDEBUG_CFLAGS/ppc   = -g
-    FASTDEBUG_CFLAGS += $(FASTDEBUG_CFLAGS/$(BUILDARCH))
-    ifeq ($(FASTDEBUG_CFLAGS/$(BUILDARCH)),)
-      ifeq ($(USE_CLANG), true)
-        # Clang doesn't understand -gstabs
-        FASTDEBUG_CFLAGS += -g
-      else
-        FASTDEBUG_CFLAGS += -gstabs
-      endif
-    endif
+    FASTDEBUG_CFLAGS += ${STABS_CFLAGS}
   
-    OPT_CFLAGS/ia64  = -g
-    OPT_CFLAGS/amd64 = -g
-    OPT_CFLAGS/arm   = -g
-    OPT_CFLAGS/ppc   = -g
-    OPT_CFLAGS += $(OPT_CFLAGS/$(BUILDARCH))
-    ifeq ($(OPT_CFLAGS/$(BUILDARCH)),)
-      ifeq ($(USE_CLANG), true)
-        # Clang doesn't understand -gstabs
-        OPT_CFLAGS += -g
-      else
-        OPT_CFLAGS += -gstabs
-      endif
-    endif
+    OPT_CFLAGS += ${STABS_CFLAGS}
   endif
 endif
 

@@ -49,6 +49,7 @@
 #   isLinux   - true if OS is Linux
 #   isSolaris - true if OS is Solaris
 #   isWindows - true if OS is Windows
+#   isBSD     - true if OS is BSD
 #   isMacos   - true if OS is Macos X
 #   isAIX     - true if OS is AIX
 
@@ -87,6 +88,7 @@ isLinux=false
 isSolaris=false
 isUnknownOS=false
 isWindows=false
+isBSD=false
 isMacos=false
 isAIX=false
 
@@ -110,6 +112,10 @@ case "$OS" in
   Linux )
     OS="Linux"
     isLinux=true
+    ;;
+  *BSD )
+    OS="BSD"
+    isBSD=true
     ;;
   Darwin )
     OS="Mac OS X"

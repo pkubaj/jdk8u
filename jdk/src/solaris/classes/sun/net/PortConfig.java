@@ -52,7 +52,7 @@ public final class PortConfig {
                     } else if (os.startsWith("SunOS")) {
                         defaultLower = 32768;
                         defaultUpper = 65535;
-                    } else if (os.contains("OS X")) {
+                    } else if (os.endsWith("BSD") || os.contains("OS X")) {
                         defaultLower = 49152;
                         defaultUpper = 65535;
                     } else if (os.startsWith("AIX")) {

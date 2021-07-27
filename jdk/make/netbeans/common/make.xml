@@ -32,14 +32,19 @@
 -->
 
 <project name="make" basedir="..">
-    
-    <target name="-make.init" depends="-init,-pre-init.linux,-pre-init.macosx,-pre-init.solaris,-pre-init.windows,-pre-init.macosx">
+
+    <target name="-make.init" depends="-init,-pre-init.linux,-pre-init.bsd,-pre-init.macosx,-pre-init.solaris,-pre-init.windows">
         <property name="make.options" value=""/> <!-- default, can be overridden per user or per project -->
     </target>
-    
+
     <target name="-pre-init.linux" if="os.linux">
         <property name="platform" value="linux"/>
         <property name="make" value="make"/>
+    </target>
+
+    <target name="-pre-init.bsd" if="os.bsd">
+        <property name="platform" value="bsd"/>
+        <property name="make" value="gmake"/>
     </target>
 
     <target name="-pre-init.macosx" if="os.macosx">
@@ -56,7 +61,7 @@
         <property name="platform" value="windows"/>
         <property name="make" value="c:/cygwin/bin/make"/>
     </target>
-    
+
     <macrodef name="make-run">
             <attribute name="target"/>
             <attribute name="dir"/>
