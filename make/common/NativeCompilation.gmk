@@ -501,6 +501,15 @@ define SetupNativeCompilation
 		$(CD) $$(@D) && $(OBJCOPY) --add-gnu-debuglink=$$(@F) $$<
 		$(TOUCH) $$@
           endif
+        else ifeq ($(OPENJDK_TARGET_OS), bsd)
+          ifneq ($$($1_STRIP_POLICY), no_strip)
+            $1_DEBUGINFO_FILES := $$($1_OBJECT_DIR)/$$($1_NOSUFFIX).debuginfo
+            $$($1_DEBUGINFO_FILES): $$($1_TARGET)
+		$(RM) $$@
+		$(OBJCOPY) --only-keep-debug $$< $$@
+		$(CD) $$(@D) && $(OBJCOPY) --add-gnu-debuglink=$$(@F) $$<
+		$(TOUCH) $$@
+          endif
         else ifeq ($(OPENJDK_TARGET_OS), aix)
             ifneq ($$($1_STRIP_POLICY), no_strip)
               # AIX does not provide the equivalent of OBJCOPY to extract debug symbols,
